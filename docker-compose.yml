@@ -1,0 +1,24 @@
+version: "3.7"
+
+services:
+  app:
+    build:
+      args:
+        user: finji
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: finji-app
+    container_name: finji-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    networks:
+      - finji-bridge
+    ports:
+      - 127.0.0.1:8008:8000
+
+networks:
+  finji-bridge:
+    external: true
