@@ -1,23 +1,92 @@
 @extends('layouts.backoffice')
 
 @section('title', 'Transactions')
-@push('styles')
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css">
-@endpush
 @section('content')
     <div class="content-wrapper">
         <!-- Content -->
-
         <div class="container-xxl flex-grow-1 container-p-y">
             <div class="card p-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-header">Transaksi</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-header mb-0">Transaksi</h5>
                     <div class="d-flex">
                         <a href="{{ route('transactions.create') }}" class="btn btn-outline-primary btn-sm">
                             <i class="bx bx-plus me-1"></i> Transaksi baru
                         </a>
                     </div>
                 </div>
+
+                {{-- Filter / Search Form --}}
+                <form method="GET" class="mb-4">
+
+                    {{-- Row 1 --}}
+                    <div class="row g-3 align-items-center">
+
+                        <div class="col-md-5    ">
+                            <div class="input-group">
+                                <input type="text" name="q" class="form-control"
+                                    placeholder="Cari: deskripsi, nominal, kategori" value="{{ request('q') }}">
+                                <button class="btn btn-outline-secondary" type="submit">Cari</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <select name="type" class="form-select">
+                                <option value="">Semua Tipe</option>
+                                <option value="income" {{ request('type') == 'income' ? 'selected' : '' }}>Income</option>
+                                <option value="expense" {{ request('type') == 'expense' ? 'selected' : '' }}>Expense
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 d-flex gap-2">
+                            <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                            <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+                        </div>
+
+                    </div>
+
+                    {{-- Row 2 --}}
+                    <div class="row g-3 mt-1 align-items-center">
+
+                        <div class="col-md-2">
+                            <select name="per_page" class="form-select">
+                                <option value="10" {{ request('per_page', 10) == 10 ? 'selected' : '' }}>10 / halaman
+                                </option>
+                                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 / halaman
+                                </option>
+                                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50 / halaman
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <select name="category_id" class="form-select">
+                                <option value="">Semua Kategori</option>
+                                @if (isset($categories))
+                                    @foreach ($categories as $category)
+                                        <option value="{{ $category->id }}"
+                                            {{ (string) request('category_id') === (string) $category->id ? 'selected' : '' }}>
+                                            {{ $category->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+
+                        <div class="col-md-7 d-flex justify-content-end gap-2">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bx bx-search me-1"></i> Terapkan
+                            </button>
+
+                            <a href="{{ route('transactions.index') }}" class="btn btn-outline-secondary">
+                                <i class="bx bx-reset me-1"></i> Reset
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+                {{-- /Filter --}}
+
 
                 <div class="table-responsive text-nowrap">
                     <table id="table" class="table table-striped">
@@ -31,18 +100,37 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($transactions as $transaction)
+                            @forelse ($transactions as $transaction)
                                 <tr>
                                     <td>
-                                        <span class="d-block">{{ $transaction->description ?? 'Pengeluaran' }}</span>
+                                        <span class="d-block">{{ $transaction->description ?? '—' }}</span>
                                     </td>
-                                    <td><small
-                                            class="badge {{ $transaction->type == 'income' ? 'bg-label-success' : 'bg-label-danger' }}">
-                                            {{ $transaction->transactionCategory->name }}</small></td>
-                                    <td>{{ now()->format('d M Y') }}</td>
+                                    <td>
+                                        @php
+                                            $cat = $transaction->transactionCategory ?? null;
+                                            $badgeClass =
+                                                $transaction->type === \App\Models\Transaction::TYPE_INCOME
+                                                    ? 'bg-label-success'
+                                                    : 'bg-label-danger';
+                                        @endphp
+
+                                        @if ($cat)
+                                            <small class="badge {{ $badgeClass }}">{{ $cat->name }}</small>
+                                        @else
+                                            <small class="badge bg-secondary">Kategori hilang</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($transaction->transaction_date)
+                                            {{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y') }}
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
                                     <td class="text-end">
-                                        <span class="{{ $transaction->type == 'income' ? 'text-success' : 'text-danger' }}">
-                                            {{ $transaction->type == 'income' ? '+' : '-' }}
+                                        <span
+                                            class="{{ $transaction->type == \App\Models\Transaction::TYPE_INCOME ? 'text-success' : 'text-danger' }}">
+                                            {{ $transaction->type == \App\Models\Transaction::TYPE_INCOME ? '+' : '-' }}
                                             Rp {{ number_format($transaction->amount, 0, ',', '.') }}
                                         </span>
                                     </td>
@@ -70,20 +158,34 @@
                                         </div>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        Tidak ada transaksi. Coba ubah kata kunci atau filter.
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
 
                     <!-- Pagination -->
-                    <div class="card-body">
-                        {{ $transactions->links() }}
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            Menampilkan {{ $transactions->firstItem() ? $transactions->firstItem() : 0 }}
+                            - {{ $transactions->lastItem() ? $transactions->lastItem() : 0 }}
+                            dari {{ $transactions->total() }} transaksi
+                        </div>
+
+                        <div>
+                            {{ $transactions->links() }}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- / Content -->
 
+    <!-- / Content -->
     <!-- Footer -->
     <footer class="content-footer footer bg-footer-theme">
         <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
@@ -104,13 +206,4 @@
     <!-- / Footer -->
 
     <div class="content-backdrop fade"></div>
-    </div>
 @endsection
-
-@push('scripts')
-    <script src="https://cdn.datatables.net/2.3.5/js/dataTables.js"></script>
-
-    <script>
-        new DataTable('#table');
-    </script>
-@endpush

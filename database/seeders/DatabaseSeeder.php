@@ -30,37 +30,31 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Makanan',
                 'slug' => 'makanan',
                 'type' => TransactionCategory::TYPE_EXPENSE, // Pengeluaran
-                'is_active' => true,
             ],
             [
                 'name' => 'Minuman',
                 'slug' => 'minuman',
                 'type' => TransactionCategory::TYPE_EXPENSE, // Pengeluaran
-                'is_active' => true,
             ],
             [
                 'name' => 'Transportasi',
                 'slug' => 'transportasi',
                 'type' => TransactionCategory::TYPE_EXPENSE,
-                'is_active' => true,
             ],
             [
                 'name' => 'Uang Bulanan',
                 'slug' => 'uang-bulanan',
                 'type' => TransactionCategory::TYPE_INCOME, // Pemasukan
-                'is_active' => true,
             ],
             [
                 'name' => 'Gaji',
                 'slug' => 'gaji',
                 'type' => TransactionCategory::TYPE_INCOME, // Pemasukan
-                'is_active' => true,
             ],
             [
-                'name' => 'Tagihan Utilitas',
-                'slug' => 'utilitas',
+                'name' => 'Tagihan & Langganan',
+                'slug' => 'tagihan-langganan',
                 'type' => TransactionCategory::TYPE_EXPENSE,
-                'is_active' => true,
             ],
         ];
 

@@ -11,7 +11,6 @@ class TransactionCategory extends Model
         'name',
         'slug',
         'type',
-        'is_active',
     ];
 
     const TYPE_INCOME = 'income';
