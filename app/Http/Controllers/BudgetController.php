@@ -23,12 +23,12 @@ class BudgetController extends Controller
     }
     public function create()
     {
-        $categories = TransactionCategory::where(['is_active' => true])->get();
+        $categories = TransactionCategory::get();
         return view('backoffice.budgets.create', compact('categories'));
     }
     public function edit($id)
     {
-        $categories = TransactionCategory::where(['is_active' => true])->get();
+        $categories = TransactionCategory::get();
         return view('backoffice.budgets.edit', compact('categories'));
     }
 }
