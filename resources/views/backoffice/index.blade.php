@@ -56,6 +56,31 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="col-lg-12">
+                            <div class="alert alert-whatsapp alert-dismissible fade show mb-4" role="alert"
+                                style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
+                                <div
+                                    class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+                                    <!-- Bagian Kiri -->
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <i class="bx bxl-whatsapp fs-4 me-2" style="color: white; flex-shrink: 0;"></i>
+                                        <span class="small">
+                                            Gunakan <strong>Finji AI Asisten</strong> di WhatsApp untuk input transaksi
+                                            lebih cepat!
+                                        </span>
+                                    </div>
+
+                                    <!-- Bagian Kanan -->
+                                    <div class="d-flex align-items-center">
+                                        <a href="https://wa.me/6281268174381" class="btn btn-light btn-sm fw-bold me-2"
+                                            target="_blank" style="color: #25D366; border-radius: 20px; padding: 6px 16px;">
+                                            <i class="bx bxl-whatsapp me-1"></i> Gunakan WhatsApp
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="col-lg-12 mb-4">
                             <div class="card h-100">
                                 <div class="card-body">
@@ -109,7 +134,7 @@
                                         Ringkasan keuangan {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}
                                     </h5>
 
-                                    <a href="{{ route('dashboard.financial-insight') }}" class="btn btn-sm btn-primary">
+                                    <a href="{{ route('financial.insight') }}" class="btn btn-sm btn-primary">
                                         Lihat insight
                                     </a>
                                 </div>

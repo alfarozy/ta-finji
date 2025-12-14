@@ -1,6 +1,115 @@
 @extends('layouts.backoffice')
 
-@section('title', 'Financial Insight')
+@section('title', 'Insight Keuangan')
+
+@push('styles')
+    <style>
+        .circle-bg {
+            fill: none;
+            stroke: #eee;
+            stroke-width: 3.8;
+        }
+
+        .circle {
+            fill: none;
+            stroke-width: 3.8;
+            stroke-linecap: round;
+            stroke: #7367f0;
+            transition: stroke-dasharray 0.7s ease;
+        }
+
+        .percentage {
+            font-size: 0.7rem;
+            text-anchor: middle;
+            fill: #7367f0;
+            transform: rotate(90deg);
+        }
+
+        .health-breakdown small {
+            font-size: 0.85rem;
+        }
+
+        .anomaly-card {
+            border-left: 4px solid #ffc107;
+            background: linear-gradient(to right, rgba(255, 193, 7, 0.05), transparent);
+        }
+
+        .insight-card {
+            border-left: 4px solid #0dcaf0;
+            background: linear-gradient(to right, rgba(13, 202, 240, 0.05), transparent);
+        }
+
+        .advice-card {
+            border-left: 4px solid #198754;
+            background: linear-gradient(to right, rgba(25, 135, 84, 0.05), transparent);
+        }
+
+        .saving-card {
+            border-left: 4px solid #6f42c1;
+            background: linear-gradient(to right, rgba(111, 66, 193, 0.05), transparent);
+        }
+
+        .bullet-point {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .transaction-income {
+            color: #198754;
+        }
+
+        .transaction-expense {
+            color: #dc3545;
+        }
+
+        @media (max-width: 767px) {
+            .circular-chart {
+                width: 90px;
+                height: 90px;
+            }
+
+            .insight-card .card-body {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+    <style>
+        .circular-chart {
+            width: 120px;
+            height: 120px;
+            transform: rotate(-90deg);
+        }
+
+        .percentage {
+            font-size: 6px;
+            fill: #7367f0;
+            font-weight: 600;
+            transform: rotate(90deg);
+            transform-origin: center;
+        }
+    </style>
+    <!-- Chart.js sebagai fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Fallback jika ApexCharts error
+        window.apexchartsLoaded = false;
+
+        // Cek jika ApexCharts gagal load
+        setTimeout(() => {
+            if (!window.apexchartsLoaded && typeof ApexCharts === 'undefined') {
+                console.warn('ApexCharts failed to load, using Chart.js fallback');
+                loadChartJsFallback();
+            }
+        }, 2000);
+
+        function loadChartJsFallback() {
+            // Implement Chart.js fallback di sini
+        }
+    </script>
+@endpush
 @section('content')
     <div class="content-wrapper">
         <div class="container-xxl flex-grow-1 container-p-y">
@@ -8,7 +117,7 @@
                 <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <h5 class="card-header p-0 border-0 mb-1">Financial Insight</h5>
+                        <h5 class="card-header p-0 border-0 mb-1">Insight Keuangan</h5>
                         <p class="text-muted mb-0 small">Analisis keuangan pribadi oleh Finji AI Assistant — periode
                             {{ date('F Y') }}</p>
                     </div>
@@ -17,13 +126,15 @@
                             <i class="bx bx-refresh me-1"></i> Generate Analysis
                         </button>
                         <button id="btnDownload" class="btn btn-success btn-sm" onclick="downloadAIAnalysis()">
-                            <i class="bx bx-download me-1"></i> Export Laporan
+                            <i class="bx bx-download me-1"></i> Export JSON
                         </button>
                     </div>
                 </div>
 
                 <!-- AI Analysis Status -->
-                <div id="aiAnalysisStatus" class="mb-3" aria-live="polite"></div>
+                <div id="aiAnalysisStatus" class="mb-3" aria-live="polite">
+                    <!-- Will be populated by JavaScript -->
+                </div>
 
                 <!-- Financial Summary + Chart -->
                 <div class="row mb-4 align-items-stretch">
@@ -31,12 +142,14 @@
                         <div class="card h-100">
                             <div class="card-body text-center">
                                 <div class="mb-2">
-                                    <small class="text-muted">Saldo Saat Ini</small>
+                                    <small class="text-muted">Total Saldo Akun</small>
                                 </div>
-                                <h3 id="balanceValue" class="mb-2">Rp 0</h3>
+                                <h3 id="balanceValue" class="mb-2">Rp {{ number_format($summary['balance'] ?? 0) }}</h3>
                                 <div class="d-flex justify-content-center gap-2">
-                                    <small class="text-success">Pemasukan: <span id="incomeValue">Rp 0</span></small>
-                                    <small class="text-danger">Pengeluaran: <span id="expenseValue">Rp 0</span></small>
+                                    <small class="text-success">Pemasukan: <span id="incomeValue">Rp
+                                            {{ number_format($summary['total_income'] ?? 0) }}</span></small>
+                                    <small class="text-danger">Pengeluaran: <span id="expenseValue">Rp
+                                            {{ number_format($summary['total_expense'] ?? 0) }}</span></small>
                                 </div>
                                 <div id="summaryChart" class="mt-3" style="height:270px;"></div>
                             </div>
@@ -52,12 +165,12 @@
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg"
                                                 d="M18 2.0845
-                                                                                                                                                                                                                                                                                                                                                     a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                                                                                                                                                                                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <path class="circle" stroke-dasharray="0, 100"
                                                 d="M18 2.0845
-                                                                                                                                                                                                                                                                                                                                                     a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                                                                                                                                                                                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <text x="18" y="20.35" class="percentage">50%</text>
                                         </svg>
                                     </div>
@@ -70,15 +183,14 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- Extra Insights: Category Breakdown, Recurring, MoM, Cashflow -->
+                <!-- Extra Insights: Category Breakdown, MoM, Cashflow -->
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <div class="card h-100">
                             <div class="card-header">
-                                <h6 class="card-title mb-0">🧾 Breakdown Kategori</h6>
+                                <h6 class="card-title mb-0">🧾 Breakdown Kategori Pengeluaran</h6>
                             </div>
                             <div class="card-body">
                                 <div id="categoryBreakdownChart" style="height:240px;"></div>
@@ -112,11 +224,10 @@
                     </div>
                 </div>
 
-
-                <!-- Actionable Recommendations -->
+                <!-- Actionable Recommendations & Anomalies -->
                 <div class="row mb-4">
-                    <div class="col-6">
-                        <div class="card">
+                    <div class="col-md-6">
+                        <div class="card h-100">
                             <div class="card-header">
                                 <h6 class="card-title mb-0">📌 Rekomendasi Tindakan</h6>
                             </div>
@@ -125,13 +236,168 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="card">
+                    <div class="col-md-6">
+                        <div class="card h-100">
                             <div class="card-header">
-                                <h6 class="card-title mb-0">🚨 Deteksi Anomali Pengeluaran</h6>
+                                <h6 class="card-title mb-0">🚨 Deteksi Anomali & Peringatan</h6>
                             </div>
                             <div class="card-body" id="anomaliesSection">
                                 <!-- populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Budget Overview (if any) -->
+                @if (!empty($budgets))
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="card-title mb-0">📊 Budget Overview</h6>
+                                    <a href="{{ route('budgets.index') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bx bx-plus"></i> Kelola Budget
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        @foreach ($budgets as $budget)
+                                            @php
+                                                $progress =
+                                                    $budget['budget_amount'] > 0
+                                                        ? min(
+                                                            100,
+                                                            ($budget['actual_spent'] / $budget['budget_amount']) * 100,
+                                                        )
+                                                        : ($budget['actual_spent'] > 0
+                                                            ? 100
+                                                            : 0);
+
+                                                $statusClass = 'bg-secondary';
+                                                $statusText = 'No Budget';
+
+                                                if ($budget['budget_amount'] > 0) {
+                                                    if ($progress <= 80) {
+                                                        $statusClass = 'bg-success';
+                                                        $statusText = 'On Track';
+                                                    } elseif ($progress <= 90) {
+                                                        $statusClass = 'bg-warning';
+                                                        $statusText = 'Near Limit';
+                                                    } else {
+                                                        $statusClass = 'bg-danger';
+                                                        $statusText = 'Over Budget';
+                                                    }
+                                                }
+                                            @endphp
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card h-100">
+                                                    <div class="card-body">
+                                                        <div class="d-flex justify-content-between mb-2">
+                                                            <strong>{{ $budget['category_name'] }}</strong>
+                                                            <span
+                                                                class="badge {{ $statusClass }}">{{ $statusText }}</span>
+                                                        </div>
+
+                                                        @if ($budget['budget_amount'] > 0)
+                                                            <div class="progress mb-2" style="height: 8px;">
+                                                                <div class="progress-bar {{ $statusClass }}"
+                                                                    role="progressbar"
+                                                                    style="width: {{ $progress }}%">
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                class="d-flex justify-content-between small text-muted mb-1">
+                                                                <span>Spent: Rp
+                                                                    {{ number_format($budget['actual_spent']) }}</span>
+                                                                <span>Budget: Rp
+                                                                    {{ number_format($budget['budget_amount']) }}</span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between">
+                                                                @if ($budget['remaining'] >= 0)
+                                                                    <span class="text-success small">
+                                                                        <i class="bx bx-check-circle"></i> Sisa: Rp
+                                                                        {{ number_format($budget['remaining']) }}
+                                                                    </span>
+                                                                @else
+                                                                    <span class="text-danger small">
+                                                                        <i class="bx bx-error-circle"></i> Lebih: Rp
+                                                                        {{ number_format(abs($budget['remaining'])) }}
+                                                                    </span>
+                                                                @endif
+                                                                <span class="text-muted small">
+                                                                    {{ round($progress) }}%
+                                                                </span>
+                                                            </div>
+                                                        @else
+                                                            <div class="alert alert-warning py-1 mb-2">
+                                                                <small><i class="bx bx-info-circle"></i> Belum ada
+                                                                    budget</small>
+                                                            </div>
+                                                            <div class="text-center">
+                                                                <small class="text-muted">Pengeluaran: Rp
+                                                                    {{ number_format($budget['actual_spent']) }}</small>
+                                                            </div>
+                                                            <div class="text-center mt-1">
+                                                                <a href="{{ route('budgets.create', ['category' => $budget['category_id']]) }}"
+                                                                    class="btn btn-sm btn-outline-primary">
+                                                                    <i class="bx bx-plus"></i> Buat Budget
+                                                                </a>
+                                                            </div>
+                                                        @endif
+
+                                                        @if (!empty($budget['description']))
+                                                            <div class="mt-2 small text-muted">
+                                                                <i class="bx bx-note"></i>
+                                                                {{ Str::limit($budget['description'], 50) }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    @if (count($budgets) == 0)
+                                        <div class="text-center py-4">
+                                            <i class="bx bx-pie-chart-alt fs-1 text-muted mb-3"></i>
+                                            <p class="text-muted">Belum ada budget yang ditetapkan</p>
+                                            <a href="{{ route('budgets.create') }}" class="btn btn-primary">
+                                                <i class="bx bx-plus"></i> Buat Budget Pertama
+                                            </a>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Recent Transactions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="card-title mb-0">📋 Transaksi Terbaru</h6>
+                                <a href="{{ route('transactions.index') }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bx bx-list-ul"></i> Lihat Semua
+                                </a>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Tanggal</th>
+                                                <th>Kategori</th>
+                                                <th>Deskripsi</th>
+                                                <th class="text-end">Jumlah</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recentTransactions">
+                                            <!-- Will be populated by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -141,7 +407,7 @@
     </div>
 
     <!-- AI Analysis Modal -->
-    <div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-hidden="true">
+    {{-- <div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-body text-center py-4">
@@ -153,344 +419,209 @@
                 </div>
             </div>
         </div>
-
-    </div>
-
+    </div> --}}
 @endsection
 
-@push('styles')
-    <style>
-        /* Circle chart (SVG) styling */
-        .circular-chart {
-            width: 120px;
-            height: 120px;
-            transform: rotate(-90deg);
-        }
-
-        .circle-bg {
-            fill: none;
-            stroke: #eee;
-            stroke-width: 3.8;
-        }
-
-        .circle {
-            fill: none;
-            stroke-width: 3.8;
-            stroke-linecap: round;
-            stroke: #7367f0;
-            transition: stroke-dasharray 0.7s ease;
-        }
-
-        .percentage {
-            font-size: 0.7rem;
-            text-anchor: middle;
-            fill: #7367f0;
-            transform: rotate(90deg);
-        }
-
-        .health-breakdown small {
-            font-size: 0.85rem;
-        }
-
-        .anomaly-card {
-            border-left: 4px solid #ffc107;
-        }
-
-        .insight-card {
-            border-left: 4px solid #0dcaf0;
-        }
-
-        .advice-card {
-            border-left: 4px solid #198754;
-        }
-
-        .saving-card {
-            border-left: 4px solid #6f42c1;
-        }
-
-        /* Responsive tweaks */
-        @media (max-width: 767px) {
-            .circular-chart {
-                width: 90px;
-                height: 90px;
-            }
-        }
-    </style>
-@endpush
-
 @push('scripts')
-    <!-- ApexCharts CDN (or your local build) -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Gunakan versi ApexCharts yang stabil -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.0"></script>
 
     <script>
-        // Default data (from backend)
+        // Data dari backend Laravel
         const financialData = {
-            summary: {
-                balance: {{ $summary['balance'] ?? 0 }},
-                total_income: {{ $summary['total_income'] ?? 0 }},
-                total_expense: {{ $summary['total_expense'] ?? 0 }}
-            },
-            topCategories: {!! json_encode($topCategories ?? []) !!},
-            spending: {!! json_encode($spending ?? []) !!},
-            income: {!! json_encode($income ?? []) !!},
-            prev_summary: {!! json_encode($prevSummary ?? null) !!},
-            budgets: {!! json_encode($budgets ?? null) !!},
-            // tambahan untuk Health & Quick Insights
+            summary: @json($summary),
+            topCategories: @json($topCategories ?? []),
+            spending: @json($spending ?? []),
+            income: @json($income ?? []),
+            trendLabels: @json($labels ?? []),
+            prev_summary: @json($prevSummary ?? null),
+            budgets: {!! json_encode($budgets ?? []) !!},
             health_breakdown: {!! json_encode($healthBreakdown ?? []) !!},
-            quick_insights: {!! json_encode($quickInsights ?? []) !!},
-            trendLabels: {!! json_encode($labels ?? []) !!},
-
         };
-
 
         let currentAIResult = null;
         let isAnalyzing = false;
+        let summaryChartInstance = null;
+        let categoryChartInstance = null;
 
-        function setButtonsState(disabled = false) {
-            document.getElementById('btnRunAI').disabled = disabled;
-            document.getElementById('btnDownload').disabled = disabled || !currentAIResult;
-        }
+        // API endpoint URLs
+        const ANALYZE_URL = '{{ route('financial.insight.analyze') }}';
+        const CSRF_TOKEN = '{{ csrf_token() }}';
+        const TRANSACTIONS_URL = '{{ route('transactions.recent') }}';
+        // Initialize UI setelah DOM siap
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pastikan element ada sebelum render chart
+            if (document.querySelector('#summaryChart')) {
+                renderSummaryChart(financialData);
+            }
 
-        function runAIAnalysis() {
+            if (document.querySelector('#categoryBreakdownChart')) {
+                renderCategoryBreakdown(financialData);
+            }
+
+            renderMoMComparison(financialData);
+            renderCashflowForecast(financialData);
+            renderHealthBreakdown(financialData.health_breakdown);
+            loadRecentTransactions();
+            // Auto-run AI analysis setelah semua chart selesai
+            setTimeout(() => {
+                runAIAnalysis();
+            }, 500);
+        });
+
+        // Run AI Analysis
+        async function runAIAnalysis() {
             if (isAnalyzing) return;
+
             isAnalyzing = true;
             setButtonsState(true);
 
-            const modal = new bootstrap.Modal(document.getElementById('aiAnalysisModal'));
-            modal.show();
+            try {
+                // Cek jika modal element ada
+                const modalElement = document.getElementById('aiAnalysisModal');
+                if (modalElement) {
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
 
-            // Example: replace setTimeout with real fetch to backend e.g.
-            // fetch('/api/insight/analyze', { method: 'POST', body: JSON.stringify({...}) })
-            setTimeout(async () => {
-                modal.hide();
+                const response = await fetch(ANALYZE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
 
-                // If you have real AI endpoint, call it here.
-                // const aiResult = await fetchAIAnalysisFromServer();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-                const aiResult = generateAIAnalysis(financialData); // mock
-                currentAIResult = aiResult;
-                updateUIWithAIResults(aiResult);
+                const result = await response.json();
 
-                showNotification('success', '🎉 Finji telah menganalisis keuangan Anda!');
+                if (result.success) {
+                    currentAIResult = result.analysis;
+                    updateUIWithAIResults(result.analysis);
+                    showNotification('success', '🎉 Finji telah menganalisis keuangan Anda!');
+                } else {
+                    throw new Error('Analysis failed');
+                }
+            } catch (error) {
+                console.error('AI Analysis error:', error);
+                showNotification('warning', 'Terjadi kesalahan saat analisis.');
+
+                // Fallback to basic analysis
+                currentAIResult = generateBasicAnalysis();
+                updateUIWithAIResults(currentAIResult);
+            } finally {
+                // Tutup modal jika ada
+                const modalElement = document.getElementById('aiAnalysisModal');
+                if (modalElement) {
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) modal.hide();
+                }
+
                 isAnalyzing = false;
                 setButtonsState(false);
-            }, 1500);
+            }
         }
 
-        // Small helper to illustrate how to call backend AI (uncomment when used)
-        /*
-        async function fetchAIAnalysisFromServer() {
-            const res = await fetch('/api/insight/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ start: null, end: null })
-            });
-            return res.json();
-        }
-        */
-
-        // Mock AI generator (kept from your previous logic but simplified)
-        function generateAIAnalysis(data) {
-            const balance = data.summary.balance;
-            const totalIncome = data.summary.total_income || 1;
-            const totalExpense = data.summary.total_expense || 0;
-            const savings = totalIncome - totalExpense;
-            const savingsRate = Math.round((savings / totalIncome) * 100);
-
-            let status = 'healthy';
-            let healthScore = 78;
-            if (totalExpense > totalIncome) {
-                status = 'deficit';
-                healthScore = 32;
-            } else if (savingsRate < 20) {
-                status = 'warning';
-                healthScore = 62;
-            }
-
-            const anomalies = [];
-            if (totalExpense > totalIncome * 0.8) {
-                anomalies.push({
-                    title: "Pengeluaran Mendekati Pemasukan",
-                    description: `Pengeluaran bulan ini Rp ${formatRupiah(totalExpense)} (${Math.round(totalExpense/totalIncome*100)}% dari pemasukan). Sisa Rp ${formatRupiah(savings)}.`
-                });
-            }
-            const insights = [{
-                title: "Keseimbangan Keuangan",
-                description: savingsRate >= 20 ? `Anda menabung ${savingsRate}% dari pemasukan.` :
-                    `Tabungan rendah: ${savingsRate}% dari pemasukan.`
-            }];
-            const advice = [{
-                title: "Strategi Budgeting",
-                description: "Pertimbangkan metode 50-30-20 untuk alokasi pengeluaran."
-            }];
-            const savingOpportunities = [];
-            const potentialSavings = Math.round(totalExpense * 0.12);
-            if (potentialSavings > 0) {
-                savingOpportunities.push({
-                    title: "Optimasi Pengeluaran Rutin",
-                    description: `Potensi hemat sekitar Rp ${formatRupiah(potentialSavings)} per bulan dengan efisiensi 12%.`
-                });
-            }
-
-            return {
-                anomalies,
-                insights,
-                advice,
-                saving_opportunities: savingOpportunities,
-                status,
-                message: status === 'healthy' ? 'Keuangan Anda dalam kondisi baik.' : status === 'warning' ?
-                    'Perhatian: tingkat tabungan rendah.' : 'Defisit: evaluasi pengeluaran segera.',
-                health_score: healthScore
-            };
-        }
-
+        // Update UI with AI results
         function updateUIWithAIResults(result) {
+            if (!result) return;
+
             updateAnalysisStatus(result.status, result.message);
-            updateSummaryCards(financialData.summary);
-            renderSummaryChart(financialData);
+            updateHealthScore(result.health_score);
             updateAnomaliesSection(result.anomalies);
-            updateHealthMetrics(result.insights, result.health_score);
-            updateAdviceSection(result.advice);
-            updateSavingOpportunities(result.saving_opportunities);
-            updateQuickInsights(result);
-            // render extended insights (categories, recurring, MoM, cashflow, budgets, recommendations)
-            renderExtraInsights();
-            setButtonsState(false);
+            updateRecommendations(result.advice, result.saving_opportunities);
         }
 
-        // UI update helpers
+        // Update analysis status
         function updateAnalysisStatus(status, message) {
             const map = {
                 healthy: {
                     cls: 'success',
-                    icon: '✅'
+                    icon: '✅',
+                    text: 'SEHAT'
                 },
                 warning: {
                     cls: 'warning',
-                    icon: '⚠️'
+                    icon: '⚠️',
+                    text: 'PERHATIAN'
                 },
                 deficit: {
                     cls: 'danger',
-                    icon: '❌'
+                    icon: '❌',
+                    text: 'DEFISIT'
                 }
             };
+
             const meta = map[status] || map.healthy;
             const el = document.getElementById('aiAnalysisStatus');
-            el.innerHTML = `
-                <div class="alert alert-${meta.cls} d-flex align-items-center">
-                    <div class="me-3 fs-4">${meta.icon}</div>
-                    <div>
-                        <div class="fw-bold">Status: ${status.toUpperCase()}</div>
-                        <div class="small text-muted">${message}</div>
+            if (el) {
+                el.innerHTML = `
+                    <div class="alert alert-${meta.cls} d-flex align-items-center">
+                        <div class="me-3 fs-4">${meta.icon}</div>
+                        <div>
+                            <div class="fw-bold">Status: ${meta.text}</div>
+                            <div class="small text-muted">${message}</div>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         }
 
-        function updateSummaryCards(summary) {
-            document.getElementById('balanceValue').textContent = `Rp ${formatRupiah(summary.balance)}`;
-            document.getElementById('incomeValue').textContent = `Rp ${formatRupiah(summary.total_income)}`;
-            document.getElementById('expenseValue').textContent = `Rp ${formatRupiah(summary.total_expense)}`;
+        // Update health score circle
+        function updateHealthScore(score) {
+            const circle = document.querySelector('#healthScoreCircle .circle');
+            const percentageText = document.querySelector('#healthScoreCircle .percentage');
+            const title = document.getElementById('healthScoreTitle');
+            const badge = document.getElementById('healthScoreBadge');
+
+            if (!circle || !percentageText || !title || !badge) return;
+
+            // Update circle
+            const dash = (score / 100) * 100;
+            circle.setAttribute('stroke-dasharray', `${dash}, 100`);
+            percentageText.textContent = `${score}%`;
+
+            // Update status
+            let statusText = 'Baik',
+                badgeClass = 'bg-success';
+            if (score < 60) {
+                statusText = 'Perlu Perhatian';
+                badgeClass = 'bg-warning';
+            }
+            if (score < 40) {
+                statusText = 'Kritis';
+                badgeClass = 'bg-danger';
+            }
+
+            title.textContent = statusText;
+            badge.className = `badge ${badgeClass}`;
+            badge.textContent = statusText;
         }
 
-        function renderSummaryChart(data) {
-            const el = document.querySelector('#summaryChart');
-            const labels = Array.isArray(data.trendLabels) ? data.trendLabels : [];
-
-            // --- helper ---
-            const shortDateLabel = (full) => full.split(" ").slice(0, 1).join(" ");
-            const fullDateLabel = (full) => {
-                const d = new Date(full);
-                return d.toLocaleDateString('id-ID', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                });
-            };
-
-            const series = [{
-                    name: 'Pemasukan',
-                    data: data.income ?? [0]
-                },
-                {
-                    name: 'Pengeluaran',
-                    data: data.spending ?? [0]
-                }
-            ];
-
-            const options = {
-                chart: {
-                    type: 'area',
-                    height: 270,
-                    toolbar: {
-                        show: false
-                    }
-                },
-                series,
-                stroke: {
-                    curve: 'smooth',
-                    width: 2
-                },
-                colors: ['#198754', '#dc3545'],
-                fill: {
-                    opacity: 0.2
-                },
-                dataLabels: {
-                    enabled: false
-                },
-
-                // ⭐ X-Axis tanggal singkat
-                xaxis: {
-                    categories: labels.map(l => shortDateLabel(l)),
-                    labels: {
-                        show: false
-                    }
-                },
-
-                // ⭐ Y-Axis compact format (rb / jt)
-                yaxis: {
-                    labels: {
-                        formatter: (value) => formatShortRupiah(value)
-                    }
-                },
-
-                // ⭐ Tooltip tanggal lengkap
-                tooltip: {
-                    x: {
-                        formatter: function(_, opts) {
-                            const fullDate = labels[opts.dataPointIndex];
-                            return fullDateLabel(fullDate);
-                        }
-                    },
-                    y: {
-                        formatter: (val) => formatCurrency(val)
-                    }
-                },
-
-                legend: {
-                    show: true,
-                    position: 'top'
-                }
-            };
-
-            el.innerHTML = '';
-            new ApexCharts(el, options).render();
-        }
-
+        // Update anomalies section
         function updateAnomaliesSection(anomalies) {
             const el = document.getElementById('anomaliesSection');
+            if (!el) return;
+
             if (!anomalies || anomalies.length === 0) {
                 el.innerHTML = `
                     <div class="text-center py-4 text-muted">
                         <i class="bx bx-check-circle fs-1 mb-2 text-success"></i>
                         <div>Tidak Ada Anomali Terdeteksi</div>
+                        <small class="text-muted">Pengeluaran Anda normal bulan ini</small>
                     </div>`;
                 return;
             }
+
             let html = '<div class="row">';
-            anomalies.forEach(a => {
-                html += `<div class="col-md-6 mb-2">
-                    <div class="card anomaly-card">
+            anomalies.slice(0, 4).forEach(a => {
+                html += `<div class="col-md-12 mb-2">
+                    <div class="card anomaly-card h-100">
                         <div class="card-body">
                             <h6 class="mb-1 text-warning">${a.title}</h6>
                             <p class="mb-0 small text-muted">${a.description}</p>
@@ -499,460 +630,682 @@
                 </div>`;
             });
             html += '</div>';
+
+            if (anomalies.length > 4) {
+                html += `<div class="text-center mt-2">
+                    <small class="text-muted">+ ${anomalies.length - 4} anomali lainnya</small>
+                </div>`;
+            }
+
             el.innerHTML = html;
         }
 
-        function formatShortRupiah(value) {
-            if (value >= 1000000) {
-                return "Rp " + (value / 1000000).toFixed(value >= 10000000 ? 0 : 1) + "jt";
-            }
-            if (value >= 1000) {
-                return "Rp " + Math.round(value / 1000) + "rb";
-            }
-            if (value == 0) {
-                return '';
-            }
-            return "Rp " + value;
-        }
+        // Update recommendations
+        function updateRecommendations(advice = [], savingOpportunities = []) {
+            const el = document.getElementById('actionableRecommendations');
+            if (!el) return;
 
-        function updateHealthMetrics(insights, healthScore) {
-            // circle
-            const svg = document.querySelector('#healthScoreCircle .circle');
-            const percText = document.querySelector('#healthScoreCircle .percentage');
-            const dash = (healthScore / 100) * 100;
-            svg.setAttribute('stroke-dasharray', `${dash}, 100`);
-            percText.textContent = `${healthScore}%`;
+            const allRecs = [...advice, ...savingOpportunities];
 
-            // title & badge
-            const title = document.getElementById('healthScoreTitle');
-            const badge = document.getElementById('healthScoreBadge');
-            let statusText = 'Baik',
-                badgeClass = 'bg-success';
-            if (healthScore < 60) {
-                statusText = 'Perlu Perhatian';
-                badgeClass = 'bg-warning';
+            if (!allRecs || allRecs.length === 0) {
+                el.innerHTML = '<div class="text-muted small">Tidak ada rekomendasi saat ini.</div>';
+                return;
             }
-            if (healthScore < 40) {
-                statusText = 'Kritis';
-                badgeClass = 'bg-danger';
-            }
-            title.textContent = statusText;
-            badge.className = `badge ${badgeClass}`;
-            badge.textContent = statusText;
 
-            // insights list
-            const container = document.getElementById('healthMetricsSection');
-            let html = '';
-            insights.forEach(i => {
-                html += `<div class="mb-3">
-                    <div class="d-flex align-items-start">
-                        <i class="bx bx-info-circle text-info me-2 mt-1"></i>
-                        <div>
-                            <h6 class="mb-1">${i.title}</h6>
-                            <p class="mb-0 small text-muted">${i.description}</p>
+            let html = '<div class="row">';
+            allRecs.slice(0, 4).forEach((rec, index) => {
+                const cardClass = index < advice.length ? 'advice-card' : 'saving-card';
+                const icon = index < advice.length ? '📋' : '💰';
+                html += `<div class="col-md-12 mb-2">
+                    <div class="card ${cardClass} h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start">
+                                <span class="me-2">${icon}</span>
+                                <div>
+                                    <h6 class="mb-1">${rec.title}</h6>
+                                    <p class="mb-0 small text-muted">${rec.description}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>`;
             });
+            html += '</div>';
+            el.innerHTML = html;
+        }
+
+        // Chart rendering functions dengan error handling
+        function renderSummaryChart(data) {
+            const el = document.querySelector('#summaryChart');
+            if (!el) {
+                console.warn('Summary chart element not found');
+                return;
+            }
+
+            // Clear previous chart jika ada
+            if (summaryChartInstance) {
+                summaryChartInstance.destroy();
+            }
+
+            const labels = Array.isArray(data.trendLabels) ? data.trendLabels : [];
+            const incomeData = Array.isArray(data.income) ? data.income : [];
+            const expenseData = Array.isArray(data.spending) ? data.spending : [];
+
+            // Jika tidak ada data, tampilkan pesan
+            if (incomeData.length === 0 && expenseData.length === 0) {
+                el.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="bx bx-line-chart fs-1 mb-2"></i>
+                        <div>Belum ada data transaksi</div>
+                        <small class="text-muted">Mulai tambahkan transaksi untuk melihat chart</small>
+                    </div>
+                `;
+                return;
+            }
+
+            // Buat default labels jika kosong
+            const finalLabels = labels.length > 0 ? labels :
+                Array.from({
+                    length: Math.max(incomeData.length, expenseData.length)
+                }, (_, i) => `Day ${i + 1}`);
+
+            // Pastikan data arrays memiliki panjang yang sama
+            const maxLength = Math.max(finalLabels.length, incomeData.length, expenseData.length);
+            const paddedIncome = [...incomeData];
+            const paddedExpense = [...expenseData];
+
+            while (paddedIncome.length < maxLength) paddedIncome.push(0);
+            while (paddedExpense.length < maxLength) paddedExpense.push(0);
+
+            try {
+                const options = {
+                    chart: {
+                        type: 'line',
+                        height: 270,
+                        toolbar: {
+                            show: false
+                        },
+                        zoom: {
+                            enabled: false
+                        }
+                    },
+                    series: [{
+                            name: 'Pemasukan',
+                            data: paddedIncome
+                        },
+                        {
+                            name: 'Pengeluaran',
+                            data: paddedExpense
+                        }
+                    ],
+                    stroke: {
+                        curve: 'smooth',
+                        width: 3
+                    },
+                    colors: ['#198754', '#dc3545'],
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shadeIntensity: 0.5,
+                            opacityFrom: 0.7,
+                            opacityTo: 0.2,
+                            stops: [0, 90, 100]
+                        }
+                    },
+                    markers: {
+                        size: 4,
+                        hover: {
+                            size: 6
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    xaxis: {
+                        categories: finalLabels,
+                        labels: {
+                            show: true,
+                            rotate: -45,
+                            style: {
+                                fontSize: '11px'
+                            }
+                        }
+                    },
+                    yaxis: {
+                        labels: {
+                            formatter: function(value) {
+                                return formatShortRupiah(value);
+                            }
+                        },
+                        min: 0
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: (val) => formatCurrency(val)
+                        }
+                    },
+                    legend: {
+                        show: true,
+                        position: 'top',
+                        horizontalAlign: 'center'
+                    },
+                    grid: {
+                        borderColor: '#f1f1f1',
+                        strokeDashArray: 3,
+                        padding: {
+                            top: 10,
+                            right: 10,
+                            bottom: 0,
+                            left: 10
+                        }
+                    }
+                };
+
+                // Render chart dengan setTimeout untuk memastikan DOM ready
+                setTimeout(() => {
+                    try {
+                        summaryChartInstance = new ApexCharts(el, options);
+                        summaryChartInstance.render();
+                    } catch (chartError) {
+                        console.error('Error rendering summary chart:', chartError);
+                        el.innerHTML = `
+                            <div class="text-center text-danger py-4">
+                                <i class="bx bx-error-circle fs-1 mb-2"></i>
+                                <div>Gagal memuat chart</div>
+                                <small class="text-muted">Silakan refresh halaman</small>
+                            </div>
+                        `;
+                    }
+                }, 100);
+
+            } catch (error) {
+                console.error('Error creating summary chart options:', error);
+                el.innerHTML = `
+                    <div class="text-center text-danger py-4">
+                        <i class="bx bx-error-circle fs-1 mb-2"></i>
+                        <div>Gagal membuat chart</div>
+                        <small class="text-muted">${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        function renderCategoryBreakdown(data) {
+            const categories = data.topCategories || [];
+            const elList = document.getElementById('categoryBreakdownList');
+            const chartEl = document.getElementById('categoryBreakdownChart');
+
+            if (!chartEl) {
+                console.warn('Category chart element not found');
+                return;
+            }
+
+            // Clear previous chart jika ada
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+
+            if (!categories.length) {
+                chartEl.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="bx bx-pie-chart-alt fs-1 mb-2"></i>
+                        <div>Belum ada pengeluaran</div>
+                        <small class="text-muted">Tambah transaksi pengeluaran untuk melihat breakdown</small>
+                    </div>`;
+
+                if (elList) {
+                    elList.innerHTML = '<div class="text-center text-muted py-3">Tidak ada pengeluaran bulan ini.</div>';
+                }
+                return;
+            }
+
+            // Prepare data for chart
+            const series = categories.map(c => c.amount || 0);
+            const labels = categories.map(c => c.name || 'Unknown');
+
+            try {
+                const options = {
+                    chart: {
+                        type: 'pie',
+                        height: 240
+                    },
+                    series: series,
+                    labels: labels,
+                    colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#9c8df9', '#00cfe8', '#ff85a1', '#a8aaae'],
+                    legend: {
+                        position: 'bottom',
+                        fontSize: '12px',
+                        itemMargin: {
+                            horizontal: 10,
+                            vertical: 5
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: (val) => formatCurrency(val)
+                        }
+                    },
+                    responsive: [{
+                        breakpoint: 480,
+                        options: {
+                            chart: {
+                                width: 200
+                            },
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }]
+                };
+
+                // Render chart
+                setTimeout(() => {
+                    try {
+                        categoryChartInstance = new ApexCharts(chartEl, options);
+                        categoryChartInstance.render();
+                    } catch (chartError) {
+                        console.error('Error rendering category chart:', chartError);
+                        chartEl.innerHTML = `
+                            <div class="text-center text-danger py-4">
+                                <i class="bx bx-error-circle fs-1 mb-2"></i>
+                                <div>Gagal memuat chart kategori</div>
+                            </div>
+                        `;
+                    }
+                }, 100);
+
+            } catch (error) {
+                console.error('Error creating category chart options:', error);
+                chartEl.innerHTML = `
+                    <div class="text-center text-danger py-4">
+                        <i class="bx bx-error-circle fs-1 mb-2"></i>
+                        <div>Gagal membuat chart kategori</div>
+                    </div>
+                `;
+            }
+
+            // List breakdown
+            if (elList) {
+                let html = '<div class="list-group list-group-flush">';
+                const totalExpense = data.summary?.total_expense || 0;
+
+                categories.forEach((c, index) => {
+                    const percentage = totalExpense > 0 ?
+                        Math.round((c.amount / totalExpense) * 100) : 0;
+                    const colors = ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#9c8df9', '#00cfe8', '#ff85a1',
+                        '#a8aaae'
+                    ];
+                    const color = colors[index % colors.length];
+
+                    html += `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <div class="bullet-point me-2" style="width:10px;height:10px;background:${color};border-radius:50%"></div>
+                            <div>
+                                <strong class="d-block">${c.name}</strong>
+                                <small class="text-muted">${c.count || 0} transaksi</small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold">${formatCurrency(c.amount)}</div>
+                            <small class="text-muted">${percentage}%</small>
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+                elList.innerHTML = html;
+            }
+        }
+
+        function renderMoMComparison(data) {
+            const el = document.getElementById('momComparison');
+            if (!el) return;
+
+            const cur = data.summary || {};
+            const prev = data.prev_summary || null;
+
+            if (!prev || prev.total_income === undefined) {
+                el.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="bx bx-line-chart fs-1 mb-2"></i>
+                        <div>Data bulan sebelumnya tidak tersedia</div>
+                        <small class="text-muted">Mulai tracking keuangan untuk melihat perbandingan</small>
+                    </div>`;
+                return;
+            }
+
+            const incomeDelta = cur.total_income - prev.total_income;
+            const expenseDelta = cur.total_expense - prev.total_expense;
+            const incomePct = prev.total_income > 0 ? Math.round((incomeDelta / prev.total_income) * 100) : 0;
+            const expensePct = prev.total_expense > 0 ? Math.round((expenseDelta / prev.total_expense) * 100) : 0;
+            const savingsDelta = (cur.total_income - cur.total_expense) - (prev.total_income - prev.total_expense);
+
+            el.innerHTML = `
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Pemasukan</small>
+                            <div class="fw-bold fs-5">${formatShortRupiah(cur.total_income)}</div>
+                            <small class="${incomeDelta >=0 ? 'text-success' : 'text-danger'}">
+                                ${incomeDelta >=0 ? '↑' : '↓'} ${Math.abs(incomePct)}%
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Pengeluaran</small>
+                            <div class="fw-bold fs-5">${formatShortRupiah(cur.total_expense)}</div>
+                            <small class="${expenseDelta <=0 ? 'text-success' : 'text-danger'}">
+                                ${expenseDelta <=0 ? '↓' : '↑'} ${Math.abs(expensePct)}%
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="mb-2">
+                            <small class="text-muted d-block">Tabungan</small>
+                            <div class="fw-bold fs-5">${formatShortRupiah(cur.total_income - cur.total_expense)}</div>
+                            <small class="${savingsDelta >=0 ? 'text-success' : 'text-danger'}">
+                                ${savingsDelta >=0 ? '↑' : '↓'} ${formatShortRupiah(Math.abs(savingsDelta))}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="small text-muted">
+                    <i class="bx bx-info-circle"></i> Dibandingkan dengan bulan lalu
+                </div>
+            `;
+        }
+
+        function renderCashflowForecast(data) {
+            const el = document.getElementById('cashflowForecast');
+            if (!el) return;
+
+            const dailyIncomeArr = Array.isArray(data.income) ? data.income : [];
+            const dailyExpenseArr = Array.isArray(data.spending) ? data.spending : [];
+
+            const days = Math.max(dailyIncomeArr.length, dailyExpenseArr.length, 1);
+            const sumIncome = dailyIncomeArr.reduce((a, b) => a + b, 0);
+            const sumExpense = dailyExpenseArr.reduce((a, b) => a + b, 0);
+
+            const avgDailyIncome = days > 0 ? sumIncome / days : 0;
+            const avgDailyExpense = days > 0 ? sumExpense / days : 0;
+            const avgDailyNet = avgDailyIncome - avgDailyExpense;
+
+            const daysForecast = 30;
+            const projectedNet = Math.round(avgDailyNet * daysForecast);
+            const currentBalance = data.summary?.balance || 0;
+            const projectedBalance = Math.round(currentBalance + projectedNet);
+
+            const status = projectedNet >= 0 ? 'positif' : 'negatif';
+            const statusColor = projectedNet >= 0 ? 'success' : 'danger';
+            const statusIcon = projectedNet >= 0 ? '📈' : '📉';
+
+            el.innerHTML = `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Rata-rata harian</small>
+                        <small>${formatShortRupiah(avgDailyNet)}</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-${statusColor}"
+                             role="progressbar"
+                             style="width: ${Math.min(100, Math.max(10, Math.abs(avgDailyNet) / 100000 * 100))}%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted d-block">Proyeksi 30 hari</small>
+                            <div class="fw-bold fs-4 text-${statusColor}">
+                                ${statusIcon} ${formatShortRupiah(Math.abs(projectedNet))}
+                            </div>
+                        </div>
+                        <span class="badge bg-${statusColor}">${status}</span>
+                    </div>
+                </div>
+
+                <div class="border-top pt-2 small text-muted">
+                    <div class="d-flex justify-content-between">
+                        <span>Saldo saat ini:</span>
+                        <span>${formatCurrency(currentBalance)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHealthBreakdown(data) {
+            const container = document.getElementById('healthBreakdown');
+            if (!container) return;
+
+            if (!data || !data.length) {
+                container.innerHTML = '<div class="text-muted small">Tidak ada data kesehatan keuangan.</div>';
+                return;
+            }
+
+            let html = '<div class="row g-2">';
+            data.forEach(item => {
+                const pct = Math.max(0, Math.min(100, item.score));
+                let color = 'bg-success',
+                    icon = '✅';
+                if (pct < 40) {
+                    color = 'bg-danger';
+                    icon = '❌';
+                } else if (pct < 60) {
+                    color = 'bg-warning';
+                    icon = '⚠️';
+                }
+
+                html += `
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">${icon}</span>
+                            <div>
+                                <div class="small text-muted">${item.metric}</div>
+                                <div class="fw-bold">${item.score}%</div>
+                            </div>
+                        </div>
+                        <div style="width:120px">
+                            <div class="progress" style="height:8px;">
+                                <div class="progress-bar ${color}"
+                                     role="progressbar"
+                                     style="width:${pct}%">
+                                </div>
+                            </div>
+                            <div class="small text-muted text-center mt-1">${item.desc}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
             container.innerHTML = html;
         }
 
-        function updateAdviceSection(advice) {
-            const el = document.getElementById('adviceSection');
-            let html = '<div class="row">';
-            advice.forEach(a => {
-                html += `<div class="col-md-12 mb-2">
-                    <div class="card advice-card">
-                        <div class="card-body">
-                            <h6 class="mb-1 text-success">${a.title}</h6>
-                            <p class="mb-0 small text-muted">${a.description}</p>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            html += '</div>';
-            el.innerHTML = html;
-        }
-
-        function updateSavingOpportunities(list) {
-
-            let html = '<div class="row">';
-            list.forEach(i => {
-                html += `<div class="col-md-6 mb-2">
-                    <div class="card saving-card h-100">
-                        <div class="card-body">
-                            <h6 class="mb-1 text-primary">${i.title}</h6>
-                            <p class="mb-0 small text-muted">${i.description}</p>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            html += '</div>';
-            el.innerHTML = html;
-        }
-
-        function updateQuickInsights(result) {
-            const el = document.getElementById('quickInsightsList');
-            const html = `<div class="small text-muted mb-2">Ringkasan:</div>
-                <div><strong>${result.health_score}%</strong> Financial Health Score</div>
-                <div class="mt-2 small text-muted">Pesan: ${result.message}</div>`;
-            el.innerHTML = html;
-        }
-
-        // Download - if server returns binary, adapt accordingly
-        function downloadAIAnalysis() {
-            if (!currentAIResult) {
-                showNotification('warning', 'Silakan jalankan analisis AI terlebih dahulu!');
-                return;
-            }
-            setButtonsState(true);
-            showNotification('info', 'Membuat laporan analisis Finji...');
-
-            // Example: Prefer server endpoint that returns file
-            // fetch('/api/insight/export', { method: 'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}, body: JSON.stringify({data: currentAIResult}) })
-            //  .then(r => r.blob()).then(blob => { ... download ... })
-
-            setTimeout(() => {
-                // fallback: download JSON
-                const reportData = {
-                    ...currentAIResult,
-                    generated_at: new Date().toISOString(),
-                    financial_summary: financialData.summary
-                };
-
-                const blob = new Blob([JSON.stringify(reportData, null, 2)], {
-                    type: 'application/json'
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `laporan-finji-${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-
-                showNotification('success', 'Laporan Finji AI berhasil diunduh!');
-                setButtonsState(false);
-            }, 900);
-        }
-
-        // Utils
+        // Helper functions
         function formatRupiah(amount) {
-            if (amount === null || amount === undefined) return '0';
-            return new Intl.NumberFormat('id-ID').format(Number(amount));
+            if (amount === null || amount === undefined || isNaN(amount)) return '0';
+            return new Intl.NumberFormat('id-ID').format(Math.round(Number(amount)));
         }
 
         function formatCurrency(val) {
             return 'Rp ' + formatRupiah(val);
         }
 
+        function formatShortRupiah(value) {
+            const num = Number(value);
+            if (isNaN(num)) return "Rp 0";
+
+            if (Math.abs(num) >= 1000000000) {
+                return "Rp " + (num / 1000000000).toFixed(1) + "M";
+            }
+            if (Math.abs(num) >= 1000000) {
+                return "Rp " + (num / 1000000).toFixed(num >= 10000000 ? 0 : 1) + "jt";
+            }
+            if (Math.abs(num) >= 1000) {
+                return "Rp " + Math.round(num / 1000) + "rb";
+            }
+            if (num == 0) {
+                return "Rp 0";
+            }
+            return "Rp " + Math.round(num);
+        }
+
+        function setButtonsState(disabled = false) {
+            const btnRun = document.getElementById('btnRunAI');
+            const btnDownload = document.getElementById('btnDownload');
+
+            if (btnRun) btnRun.disabled = disabled;
+            if (btnDownload) btnDownload.disabled = disabled || !currentAIResult;
+        }
+
         function showNotification(type, message) {
-            const wrapper = document.createElement('div');
-            wrapper.className =
-                `toast align-items-center text-bg-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info'} border-0`;
-            wrapper.style.position = 'fixed';
-            wrapper.style.right = '20px';
-            wrapper.style.top = '20px';
-            wrapper.style.zIndex = 9999;
-            wrapper.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body small text-white">${message}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            `;
-            document.body.appendChild(wrapper);
-            const bsToast = new bootstrap.Toast(wrapper, {
-                delay: 3500
-            });
-            bsToast.show();
-            wrapper.addEventListener('hidden.bs.toast', () => wrapper.remove());
+            // Simple toast notification
+            const toastId = 'toast-' + Date.now();
+            const toast = `
+                <div id="${toastId}" class="toast show align-items-center text-white bg-${type} border-0"
+                     style="position:fixed; top:20px; right:20px; z-index:9999;">
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                                data-bs-dismiss="toast" onclick="document.getElementById('${toastId}').remove()"></button>
+                    </div>
+                </div>`;
+
+            // Add new toast
+            document.body.insertAdjacentHTML('beforeend', toast);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                const toastEl = document.getElementById(toastId);
+                if (toastEl) toastEl.remove();
+            }, 3000);
         }
 
-        // ------------------------------
-        // Extra insights functions
-        // ------------------------------
-        function safeArraySum(arr) {
-            if (!Array.isArray(arr)) return 0;
-            return arr.reduce((s, v) => s + (Number(v) || 0), 0);
-        }
+        // Basic analysis for fallback
+        function generateBasicAnalysis() {
+            const totalIncome = financialData.summary?.total_income || 0;
+            const totalExpense = financialData.summary?.total_expense || 0;
+            const savings = totalIncome - totalExpense;
+            const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
 
-        // Category breakdown (pie + list)
-        function renderCategoryBreakdown(data) {
-            const categories = data.topCategories || [];
-            const elList = document.getElementById('categoryBreakdownList');
-            const chartEl = document.getElementById('categoryBreakdownChart');
-
-            if (!categories.length) {
-                chartEl.innerHTML = '<div class="text-center text-muted py-4">Tidak ada data kategori.</div>';
-                elList.innerHTML = '';
-                return;
+            let status = 'healthy',
+                healthScore = 75;
+            if (totalExpense > totalIncome) {
+                status = 'deficit';
+                healthScore = 35;
+            } else if (savingsRate < 20) {
+                status = 'warning';
+                healthScore = 55;
             }
 
-            const series = categories.map(c => c.amount || 0);
-            const labels = categories.map(c => c.name || 'Unknown');
+            const anomalies = [];
+            if (totalIncome > 0 && (totalExpense / totalIncome) > 0.8) {
+                anomalies.push({
+                    title: "Pengeluaran Mendekati Pemasukan",
+                    description: `Pengeluaran mencapai ${Math.round((totalExpense/totalIncome)*100)}% dari pemasukan.`
+                });
+            }
 
-            const options = {
-                chart: {
-                    type: 'donut',
-                    height: 240
-                },
-                series: series,
-                labels: labels,
-                legend: {
-                    position: 'bottom'
-                },
-                tooltip: {
-                    y: {
-                        formatter: (val) => formatCurrency(val)
-                    }
-                }
+            return {
+                status,
+                message: status === 'healthy' ? 'Keuangan Anda dalam kondisi baik.' : status === 'warning' ?
+                    'Perhatian: tingkat tabungan rendah.' : 'Defisit: evaluasi pengeluaran segera.',
+                health_score: healthScore,
+                anomalies: anomalies,
+                insights: [{
+                    title: 'Analisis Dasar',
+                    description: 'Analisis menggunakan data transaksi bulan ini.'
+                }],
+                advice: [{
+                    title: 'Pantau Rutin',
+                    description: 'Lacak pengeluaran Anda secara berkala untuk menjaga kesehatan keuangan.'
+                }],
+                saving_opportunities: []
             };
-            chartEl.innerHTML = '';
-            new ApexCharts(chartEl, options).render();
-
-            let html = '<div class="list-group list-group-flush">';
-            categories.forEach(c => {
-                const pct = data.summary.total_expense ? Math.round((c.amount / data.summary.total_expense) *
-                        100) :
-                    0;
-                html += `<div class="d-flex justify-content-between align-items-center py-2">
-                            <div><strong>${c.name}</strong><div class="small text-muted">${c.count || 0} transaksi</div></div>
-                            <div class="text-end"><div>${formatCurrency(c.amount)}</div><small class="text-muted">${pct}%</small></div>
-                         </div>`;
-            });
-            html += '</div>';
-            elList.innerHTML = html;
         }
 
-        // Detect recurring expenses (heuristic)
-        function detectRecurringExpenses(raw) {
-            const repeating = [];
-            const cats = raw.topCategories || [];
-            cats.forEach(cat => {
-                const count = cat.count || 0;
-                const avg = cat.amount ? (cat.amount / Math.max(1, count)) : 0;
-                if (count >= 3 && avg > 0) {
-                    repeating.push({
-                        name: cat.name,
-                        monthly_count: count,
-                        avg_amount: Math.round(avg),
-                        total: cat.amount
-                    });
+        // Load recent transactions
+        async function loadRecentTransactions() {
+            // try {
+            const response = await fetch(TRANSACTIONS_URL || '/api/transactions/recent', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN
                 }
             });
-            return repeating;
+
+            if (response.ok) {
+                const data = await response.json();
+                renderRecentTransactions(data);
+            } else {
+                // Fallback to sample data
+                renderRecentTransactions([]);
+
+                console.log('error transactions');
+            }
+            // } catch (error) {
+            //     console.error('Error loading transactions:', error);
+            //     renderRecentTransactions([]);
+            // }
         }
 
-
-        // MoM comparison
-        function renderMoMComparison(data) {
-            const el = document.getElementById('momComparison');
-            const cur = data.summary || {};
-            const prev = data.prev_summary || null;
-            if (!prev) {
-                el.innerHTML = '<div class="text-muted small">Data perbandingan bulan sebelumnya tidak tersedia.</div>';
-                return;
-            }
-            const incomeDelta = cur.total_income - prev.total_income;
-            const expenseDelta = cur.total_expense - prev.total_expense;
-            const incomePct = prev.total_income ? Math.round((incomeDelta / prev.total_income) * 100) : 0;
-            const expensePct = prev.total_expense ? Math.round((expenseDelta / prev.total_expense) * 100) : 0;
-
-            el.innerHTML = `
-                <div class="d-flex justify-content-between mb-2">
-                    <div><small class="text-muted">Pemasukan (Bulan Ini)</small><div class="fw-bold">${formatCurrency(cur.total_income)}</div></div>
-                    <div class="${incomeDelta >=0 ? 'text-success' : 'text-danger'}">${incomeDelta >=0 ? '↑' : '↓'} ${formatCurrency(Math.abs(incomeDelta))} (${incomePct}%)</div>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <div><small class="text-muted">Pengeluaran (Bulan Ini)</small><div class="fw-bold">${formatCurrency(cur.total_expense)}</div></div>
-                    <div class="${expenseDelta <=0 ? 'text-success' : 'text-danger'}">${expenseDelta <=0 ? '↓' : '↑'} ${formatCurrency(Math.abs(expenseDelta))} (${Math.abs(expensePct)}%)</div>
-                </div>
-                <div><small class="text-muted">Perubahan Saldo</small><div class="fw-bold">${formatCurrency(cur.balance)} (sekarang)</div></div>
-            `;
-        }
-
-        // Cashflow forecast (30 days)
-        function renderCashflowForecast(data) {
-            const el = document.getElementById('cashflowForecast');
-            const dailyIncomeArr = Array.isArray(data.income) && data.income.length ? data.income : [];
-            const dailyExpenseArr = Array.isArray(data.spending) && data.spending.length ? data.spending : [];
-            const days = Math.max(dailyIncomeArr.length, dailyExpenseArr.length, 1);
-            const sumIncome = safeArraySum(dailyIncomeArr);
-            const sumExpense = safeArraySum(dailyExpenseArr);
-            const avgDailyNet = (sumIncome - sumExpense) / days;
-            const daysForecast = 30;
-            const projectedNet = Math.round(avgDailyNet * daysForecast);
-            const projectedBalance = Math.round((data.summary.balance || 0) + projectedNet);
-
-            el.innerHTML = `
-                <div class="mb-2 small text-muted">Rata-rata harian (net): <strong>${formatCurrency(Math.round(avgDailyNet))}</strong></div>
-                <div class="mb-2">Perkiraan perubahan dalam ${daysForecast} hari: <strong>${projectedNet >=0 ? '+' : '-'} ${formatCurrency(Math.abs(projectedNet))}</strong></div>
-                <div>Perkiraan saldo di ${daysForecast} hari: <strong>${formatCurrency(projectedBalance)}</strong></div>
-                <div class="mt-2 small text-muted">Proyeksi sederhana berdasarkan rata-rata historis. Untuk akurasi lebih baik, gunakan data transaksi lebih panjang.</div>
-            `;
-        }
-
-        // Budget variance (if budgets provided)
-        function renderBudgetVariance(data) {
-            const budgets = data.budgets || null;
-            if (!budgets || !budgets.length) return;
-
-            const catMap = {};
-            (data.topCategories || []).forEach(c => {
-                catMap[c.name] = c.amount;
-            });
-
-            let html = '<div class="row">';
-            budgets.forEach(b => {
-                const spent = catMap[b.category_name] || 0;
-                const diff = b.amount - spent;
-                const status = diff >= 0 ? 'Under' : 'Over';
-                html += `<div class="col-md-6 mb-2">
-                            <div class="card ${status === 'Over' ? 'anomaly-card' : 'insight-card'}">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div><strong>${b.category_name}</strong><div class="small text-muted">Budget Rp ${formatRupiah(b.amount)}</div></div>
-                                        <div class="text-end">
-                                            <div class="${status==='Over'?'text-danger':'text-success'} fw-bold">${formatCurrency(spent)}</div>
-                                            <small class="text-muted">${status === 'Over' ? 'Melebihi' : 'Tersisa'} ${formatCurrency(Math.abs(diff))}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                         </div>`;
-            });
-            html += '</div>';
-            el.insertAdjacentHTML('beforeend',
-                `<hr class="my-3"><div><h6 class="mb-2">Budget Variance</h6>${html}</div>`);
-        }
-
-        // Actionable recommendations
-        function renderActionableRecommendations(data, aiResult) {
-            const el = document.getElementById('actionableRecommendations');
-            const recs = [];
-
-            if (aiResult && aiResult.advice) {
-                aiResult.advice.forEach(a => recs.push({
-                    title: a.title,
-                    desc: a.description
-                }));
-            }
-
-            const monthlyExpense = data.summary.total_expense || 0;
-            const balance = data.summary.balance || 0;
-            const monthsCovered = monthlyExpense ? (balance / monthlyExpense) : 0;
-            if (monthsCovered < 1) {
-                recs.push({
-                    title: "Tambahkan Dana Darurat",
-                    desc: `Saldo hanya mencukupi ${monthsCovered.toFixed(1)} bulan pengeluaran. Targetkan dana darurat minimal 3 bulan.`
-                });
-            } else if (monthsCovered < 3) {
-                recs.push({
-                    title: "Perkuat Dana Darurat",
-                    desc: `Saldo mencukupi ~${monthsCovered.toFixed(1)} bulan. Tambahkan tabungan hingga mencapai 3 bulan.`
-                });
-            }
-
-            const recurring = detectRecurringExpenses(data);
-            if (recurring.length) {
-                recs.push({
-                    title: "Tinjau Langganan",
-                    desc: `Teridentifikasi ${recurring.length} pengeluaran berulang. Pertimbangkan untuk membatalkan langganan yang tidak digunakan.`
-                });
-            }
-
-            const avgDailyNet = ((safeArraySum(data.income) - safeArraySum(data.spending)) / Math.max(1, Math.max(data
-                .income.length, data.spending.length)));
-            if (avgDailyNet < 0) {
-                recs.push({
-                    title: "Perbaiki Arus Kas",
-                    desc: "Rata-rata arus kas harian negatif — kurangi pengeluaran jangka pendek atau tingkatkan pemasukan."
-                });
-            }
-
-            if (!recs.length) {
-                el.innerHTML =
-                    '<div class="text-muted small">Tidak ada rekomendasi tambahan — kondisi Anda stabil.</div>';
+        function renderRecentTransactions(transactions) {
+            const container = document.getElementById('recentTransactions');
+            if (!transactions || transactions.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-3">
+                            Tidak ada transaksi terbaru
+                        </td>
+                    </tr>`;
                 return;
             }
 
-            let html = '<div class="row">';
-            recs.forEach(r => {
-                html += `<div class="col-md-6 mb-2">
-                            <div class="card insight-card h-100">
-                                <div class="card-body">
-                                    <h6 class="mb-1">${r.title}</h6>
-                                    <p class="mb-0 small text-muted">${r.desc}</p>
-                                </div>
-                            </div>
-                         </div>`;
+            let html = '';
+            transactions.slice(0, 5).forEach(transaction => {
+                const typeClass = transaction.type === 'income' ? 'transaction-income' : 'transaction-expense';
+                const typeIcon = transaction.type === 'income' ? 'bx bx-trending-up text-success' :
+                    'bx bx-trending-down text-danger';
+                const amountFormatted = formatCurrency(transaction.amount);
+
+                html += `<tr>
+                    <td>${formatDate(transaction.date)}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="${typeIcon} me-2"></i>
+                            ${transaction.category || 'Uncategorized'}
+                        </div>
+                    </td>
+                    <td>${transaction.description || '-'}</td>
+                    <td class="text-end ${typeClass} fw-bold">
+                        ${transaction.type === 'income' ? '+' : '-'} ${amountFormatted}
+                    </td>
+                </tr>`;
             });
-            html += '</div>';
-            el.innerHTML = html;
+
+            container.innerHTML = html;
         }
 
-        // Compose extra insights
-        function renderExtraInsights() {
-            try {
-                renderCategoryBreakdown(financialData);
-                renderMoMComparison(financialData);
-                renderCashflowForecast(financialData);
-                renderBudgetVariance(financialData);
-                renderActionableRecommendations(financialData, currentAIResult);
-                renderHealthBreakdown(financialData.health_breakdown);
-                renderQuickInsights(financialData.quick_insights);
-            } catch (e) {
-                console.error('Error rendering extra insights', e);
+        // Clean up charts saat page unload
+        window.addEventListener('beforeunload', function() {
+            if (summaryChartInstance) {
+                summaryChartInstance.destroy();
             }
-        }
-
-        // Init
-        document.addEventListener('DOMContentLoaded', function() {
-            updateSummaryCards(financialData.summary);
-            renderSummaryChart(financialData);
-            renderCategoryBreakdown(financialData);
-            renderMoMComparison(financialData);
-            renderCashflowForecast(financialData);
-            renderHealthBreakdown(financialData.health_breakdown);
-            renderQuickInsights(financialData.quick_insights);
-
-            // run AI automatically (optional)
-            runAIAnalysis();
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
         });
 
-
-        function renderHealthBreakdown(data) {
-            const container = document.getElementById('healthBreakdown');
-            if (!data || !data.length) {
-                container.innerHTML = '<div class="text-muted small">Tidak ada data kesehatan keuangan.</div>';
-                return;
-            }
-            let html = '<div class="row g-2">';
-            data.forEach(item => {
-                // small bar indicator berdasarkan score
-                const pct = Math.max(0, Math.min(100, item.score));
-                let color = 'bg-success';
-                if (pct < 40) color = 'bg-danger';
-                else if (pct < 60) color = 'bg-warning';
-
-                html += `<div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="small text-muted">${item.metric}</div>
-                    <div class="fw-bold">${item.score}%</div>
-                    <div class="small text-muted">${item.desc}</div>
-                </div>
-                <div style="width:140px">
-                    <div class="progress" style="height:8px;">
-                        <div class="progress-bar ${color}" role="progressbar" style="width:${pct}%" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                </div>
-            </div>
-        </div>`;
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
             });
-            html += '</div>';
-            container.innerHTML = html;
         }
     </script>
 @endpush

@@ -182,8 +182,8 @@
             </a>
         </li>
 
-            <li class="menu-item {{ request()->routeIs('dashboard.financial-insight') ? 'active' : '' }}">
-                <a href="{{ route('dashboard.financial-insight') }}" class="menu-link">
+            <li class="menu-item {{ request()->routeIs('financial.insight') ? 'active' : '' }}">
+                <a href="{{ route('financial.insight') }}" class="menu-link">
                     <i class="menu-icon tf-icons bx bx-chart"></i>
                     <div>Insight Keuangan</div>
                 </a>

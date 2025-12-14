@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Budget;
 use App\Models\Transaction;
 use App\Models\UserBalance;
 use Carbon\Carbon;
@@ -11,129 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function financialInsight()
-    {
 
-        $summary = [
-            'balance' => 5200000,        // saldo saat ini (Rp)
-            'total_income' => 12000000,  // total pemasukan bulan ini (Rp)
-            'total_expense' => 6800000   // total pengeluaran bulan ini (Rp)
-        ];
-
-        // Top categories (nama, jumlah transaksi, total amount)
-        $topCategories = [
-            ['name' => 'Makanan & Minuman', 'count' => 22, 'amount' => 1800000],
-            ['name' => 'Transportasi', 'count' => 10, 'amount' => 650000],
-            ['name' => 'Tagihan & Langganan', 'count' => 3, 'amount' => 900000],
-            ['name' => 'Belanja & Retail', 'count' => 8, 'amount' => 1200000],
-        ];
-
-        // Daily spending (contoh 30 hari) — angka bulat Rp
-        $spending = [
-            750000,
-            120000,
-            50000,
-            0,
-            90000,
-            60000,
-            150000,
-            80000,
-            0,
-            95000,
-            700000,
-            110000,
-            45000,
-            30000,
-            125000,
-            0,
-            60000,
-            1400000,
-            80000,
-            50000,
-            70000,
-            90000,
-            0,
-            120000,
-            750000,
-            65000,
-            85000,
-            40000,
-            100000,
-            95000
-        ];
-
-        // Daily income (contoh 30 hari) — bisa sebagian hari 0 (freelance/gaji berkala)
-        $income = [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            2000000,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            2000000,
-            0,
-            0,
-            0,
-            0,
-            0
-        ];
-
-        // Optional: labels (dipakai chart xaxis)
-        $start = now()->startOfMonth();
-        $end   = now()->endOfMonth();
-
-        $labels = [];
-        $current = $start->copy();
-
-        while ($current <= $end) {
-            $labels[] = $current->format('d M Y'); // contoh: 01 Jan, 02 Jan, ...
-            $current->addDay();
-        }
-
-        // Previous month summary (untuk MoM)
-        $prevSummary = [
-            'balance' => 3200000,
-            'total_income' => 10000000,
-            'total_expense' => 6800000
-        ];
-
-        // Example budgets (untuk budget variance)
-        $budgets = [
-            ['category_name' => 'Makanan & Minuman', 'amount' => 2000000],
-            ['category_name' => 'Transportasi', 'amount' => 700000],
-            ['category_name' => 'Tagihan & Langganan', 'amount' => 1000000],
-            ['category_name' => 'Belanja & Retail', 'amount' => 1500000]
-        ];
-        $healthBreakdown = [
-            ['metric' => 'Expense to Income', 'score' => 72, 'desc' => 'Rasio pengeluaran terhadap pemasukan — semakin rendah semakin baik.'],
-            ['metric' => 'Expense Volatility', 'score' => 60, 'desc' => 'Fluktuasi pengeluaran harian — stabilitas sedang.'],
-        ];
-
-        $quickInsights = [
-            ['title' => 'Pengeluaran Tertinggi', 'value' => 'Makanan & Minuman', 'meta' => 'Rp 1.800.000 • 22 transaksi'],
-            ['title' => 'Rata-Rata Harian (net)', 'value' => 'Rp -5.000', 'meta' => 'Arus kas harian sedikit negatif'],
-            ['title' => 'Potensi Hemat', 'value' => 'Rp 816.000 / bln', 'meta' => 'Optimasi 12% pada pengeluaran rutin']
-        ];
-        return view('backoffice.financial-insight', compact('summary', 'topCategories', 'spending', 'income', 'labels', 'prevSummary', 'budgets', 'healthBreakdown', 'quickInsights'));
-    }
     public function getDashboardSummary()
     {
         $userId = Auth::id();
@@ -212,145 +91,395 @@ class DashboardController extends Controller
             'daysInMonth'
         ));
     }
-    public function categories()
+    public function financialInsight()
     {
-        return view('backoffice.transactions.categories.index');
+        $user = auth()->user();
+        $now = now();
+
+        // Periode bulan ini
+        $startOfMonth = $now->copy()->startOfMonth();
+        $endOfMonth = $now->copy()->endOfMonth();
+
+        // Periode bulan sebelumnya
+        $startOfPrevMonth = $now->copy()->subMonth()->startOfMonth();
+        $endOfPrevMonth = $now->copy()->subMonth()->endOfMonth();
+
+        // 1. SUMMARY BULAN INI
+        $summary = $this->getMonthlySummary($user->id, $startOfMonth, $endOfMonth);
+
+        // 2. SUMMARY BULAN SEBELUMNYA
+        $prevSummary = $this->getMonthlySummary($user->id, $startOfPrevMonth, $endOfPrevMonth);
+
+        // 3. DATA TIME SERIES (30 hari terakhir)
+        $timeSeriesData = $this->getTimeSeriesData($user->id, $now->copy()->subDays(30), $endOfMonth);
+
+        // 4. TOP CATEGORIES (pengeluaran bulan ini)
+        $topCategories = $this->getTopCategories($user->id, $startOfMonth, $endOfMonth);
+
+        // 5. BUDGETS USER
+        $budgets = $this->getUserBudgets($user->id);
+
+        // 6. HEALTH BREAKDOWN
+        $healthBreakdown = $this->calculateHealthBreakdown($summary, $budgets);
+
+        // 7. QUICK INSIGHTS
+        $quickInsights = $this->generateQuickInsights($summary, $prevSummary, $topCategories);
+
+        return view('backoffice.financial-insight', [
+            'summary' => $summary,
+            'prevSummary' => $prevSummary,
+            'labels' => $timeSeriesData['labels'],
+            'spending' => $timeSeriesData['spending'],
+            'income' => $timeSeriesData['income'],
+            'topCategories' => $topCategories,
+            'budgets' => $budgets,
+            'healthBreakdown' => $healthBreakdown,
+            'quickInsights' => $quickInsights,
+        ]);
     }
 
-    public function analyze(Request $request)
+    /**
+     * Get monthly financial summary
+     */
+    private function getMonthlySummary($userId, $startDate, $endDate)
     {
-        $userId = 1;
-
-        $data = [
-            'summary' => $this->getFinancialSummary($userId),
-            'topCategories' => $this->getTopCategories($userId),
-            'spending' => $this->getSpendingTransactions($userId),
-            'income' => $this->getIncomeTransactions($userId)
-        ];
-
-        // Call AI analysis API (you would replace this with your actual AI service)
-        $aiAnalysis = $this->callAIAnalysis($data);
-
-        return response()->json($aiAnalysis);
+        return Transaction::where('user_id', $userId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->select(
+                DB::raw('SUM(CASE WHEN type = "income" THEN amount ELSE 0 END) as total_income'),
+                DB::raw('SUM(CASE WHEN type = "expense" THEN amount ELSE 0 END) as total_expense'),
+                DB::raw('COALESCE(SUM(CASE WHEN type = "income" THEN amount ELSE -amount END), 0) as net_flow')
+            )
+            ->first()
+            ->toArray();
     }
 
-    private function getFinancialSummary($userId)
+    /**
+     * Get time series data for charts
+     */
+    private function getTimeSeriesData($userId, $startDate, $endDate)
     {
-        // Example implementation - replace with your actual data
-        return [
-            'balance' => 2500000,
-            'total_income' => 3500000,
-            'total_expense' => 2800000
-        ];
-    }
+        $days = [];
+        $current = $startDate->copy();
 
-    private function getTopCategories($userId)
-    {
-        // Example implementation
-        return [
-            ['name' => 'Makan & Minum', 'amount' => 850000],
-            ['name' => 'Transportasi', 'amount' => 450000],
-            ['name' => 'Hiburan', 'amount' => 350000],
-            ['name' => 'Belanja', 'amount' => 420000],
-            ['name' => 'Pendidikan', 'amount' => 300000]
-        ];
-    }
+        while ($current <= $endDate) {
+            $days[] = $current->format('Y-m-d');
+            $current->addDay();
+        }
 
-    private function getSpendingTransactions($userId)
-    {
-        // Example implementation
-        return [
-            ['date' => '2024-12-15', 'description' => 'GoFood', 'amount' => 75000, 'category' => 'Makan & Minum'],
-            ['date' => '2024-12-14', 'description' => 'Token Listrik', 'amount' => 150000, 'category' => 'Kebutuhan'],
-            ['date' => '2024-12-13', 'description' => 'Buku Kuliah', 'amount' => 120000, 'category' => 'Pendidikan']
-        ];
-    }
+        // Get daily aggregates
+        $dailyData = Transaction::where('user_id', $userId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->select(
+                DB::raw('DATE(date) as day'),
+                DB::raw('SUM(CASE WHEN type = "income" THEN amount ELSE 0 END) as income'),
+                DB::raw('SUM(CASE WHEN type = "expense" THEN amount ELSE 0 END) as expense')
+            )
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get()
+            ->keyBy('day');
 
-    private function getIncomeTransactions($userId)
-    {
-        // Example implementation
-        return [
-            ['date' => '2024-12-01', 'description' => 'Transfer Orang Tua', 'amount' => 2000000],
-            ['date' => '2024-12-15', 'description' => 'Part-time Job', 'amount' => 1500000]
-        ];
-    }
+        $labels = [];
+        $incomeData = [];
+        $expenseData = [];
 
-    private function callAIAnalysis($data)
-    {
-        // This is where you would call your actual AI API
-        // For now, return mock analysis based on the data
+        foreach ($days as $day) {
+            $date = Carbon::parse($day);
+            $labels[] = $date->format('d M');
 
-        $balance = $data['summary']['balance'];
-        $totalIncome = $data['summary']['total_income'];
-        $totalExpense = $data['summary']['total_expense'];
-
-        // Simple analysis logic
-        $savings = $totalIncome - $totalExpense;
-        $savingsRate = $totalIncome > 0 ? ($savings / $totalIncome) * 100 : 0;
-
-        $status = 'healthy';
-        if ($savings < 0) {
-            $status = 'deficit';
-        } elseif ($savingsRate < 20) {
-            $status = 'warning';
+            if (isset($dailyData[$day])) {
+                $incomeData[] = (float) $dailyData[$day]->income;
+                $expenseData[] = (float) $dailyData[$day]->expense;
+            } else {
+                $incomeData[] = 0;
+                $expenseData[] = 0;
+            }
         }
 
         return [
-            'anomalies' => $this->generateAnomalies($data),
-            'insights' => $this->generateInsights($data),
-            'advice' => $this->generateAdvice($data),
-            'saving_opportunities' => $this->generateSavingOpportunities($data),
-            'status' => $status,
-            'message' => $this->generateMessage($status, $data),
-            'health_score' => $this->calculateHealthScore($data)
+            'labels' => $labels,
+            'income' => $incomeData,
+            'spending' => $expenseData
         ];
     }
 
-    private function generateAnomalies($data)
+    /**
+     * Get top expense categories
+     */
+    private function getTopCategories($userId, $startDate, $endDate)
     {
-        $anomalies = [];
-        $totalIncome = $data['summary']['total_income'];
+        return Transaction::with('category:id,name')
+            ->where('user_id', $userId)
+            ->where('type', Transaction::TYPE_EXPENSE)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->get()
+            ->groupBy('transaction_category_id')
+            ->map(function ($items) {
+                $category = $items->first()->category;
 
-        // Check if any category spending is too high
-        foreach ($data['topCategories'] as $category) {
-            if ($category['amount'] > $totalIncome * 0.3) {
+                return [
+                    'name'   => $category?->name ?? 'Tidak diketahui',
+                    'amount' => (float) $items->sum('amount'),
+                    'count'  => (int) $items->count(),
+                ];
+            })
+            ->sortByDesc('amount')
+            ->take(8)
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get user budgets
+     */
+    private function getUserBudgets($userId)
+    {
+        return Budget::where('user_id', $userId)
+            ->where('month', now()->format('Y-m'))
+            ->with('category')
+            ->get()
+            ->map(function ($budget) {
+                return [
+                    'category_id' => $budget->category_id,
+                    'category_name' => $budget->category->name ?? 'Uncategorized',
+                    'amount' => (float) $budget->amount,
+                    'period' => $budget->period
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Calculate health breakdown
+     */
+    private function calculateHealthBreakdown($summary, $budgets)
+    {
+        $totalIncome = $summary['total_income'] ?? 0;
+        $totalExpense = $summary['total_expense'] ?? 0;
+        $savings = $totalIncome - $totalExpense;
+
+        // 1. Savings Rate Score
+        $savingsRate = $totalIncome > 0 ? ($savings / $totalIncome) * 100 : 0;
+        $savingsScore = min(100, max(0, $savingsRate * 2)); // Normalize to score
+
+        // 2. Expense to Income Ratio Score
+        $expenseRatio = $totalIncome > 0 ? ($totalExpense / $totalIncome) * 100 : 100;
+        $expenseScore = $expenseRatio <= 80 ? 100 : max(0, 100 - (($expenseRatio - 80) * 5));
+
+        // 3. Budget Adherence Score (if budgets exist)
+        $budgetScore = 75; // Default
+        if (!empty($budgets)) {
+            $adherenceScores = [];
+            foreach ($budgets as $budget) {
+                // Logic untuk menghitung adherence per budget
+                $adherenceScores[] = 80; // Contoh static
+            }
+            $budgetScore = !empty($adherenceScores) ? array_sum($adherenceScores) / count($adherenceScores) : 75;
+        }
+
+        // 4. Emergency Fund Score (asumsi ada field balance di user)
+        $emergencyMonths = $totalExpense > 0 ? (auth()->user()->balance ?? 0) / $totalExpense : 0;
+        $emergencyScore = min(100, $emergencyMonths * 33.33); // 3 bulan = 100%
+
+        return [
+            [
+                'metric' => 'Savings Rate',
+                'score' => round($savingsScore),
+                'desc' => round($savingsRate, 1) . '% dari pemasukan'
+            ],
+            [
+                'metric' => 'Expense Control',
+                'score' => round($expenseScore),
+                'desc' => round($expenseRatio, 1) . '% dari pemasukan'
+            ],
+            [
+                'metric' => 'Budget Adherence',
+                'score' => round($budgetScore),
+                'desc' => !empty($budgets) ? count($budgets) . ' kategori' : 'Tidak ada budget'
+            ],
+            [
+                'metric' => 'Emergency Fund',
+                'score' => round($emergencyScore),
+                'desc' => round($emergencyMonths, 1) . ' bulan pengeluaran'
+            ]
+        ];
+    }
+
+    /**
+     * Generate quick insights
+     */
+    private function generateQuickInsights($summary, $prevSummary, $topCategories)
+    {
+        $insights = [];
+
+        // Insight 1: Perbandingan dengan bulan lalu
+        $currentIncome = $summary['total_income'] ?? 0;
+        $prevIncome = $prevSummary['total_income'] ?? 0;
+        $incomeChange = $prevIncome > 0 ? (($currentIncome - $prevIncome) / $prevIncome) * 100 : 0;
+
+        if (abs($incomeChange) > 10) {
+            $insights[] = $incomeChange > 0
+                ? "Pemasukan meningkat " . round($incomeChange) . "% dari bulan lalu"
+                : "Pemasukan turun " . round(abs($incomeChange)) . "% dari bulan lalu";
+        }
+
+        // Insight 2: Top spending category
+        if (!empty($topCategories)) {
+            $topCat = $topCategories[0];
+            $insights[] = "Pengeluaran terbanyak di " . $topCat['name'] . " (Rp " . number_format($topCat['amount']) . ")";
+        }
+
+        // Insight 3: Savings status
+        $savings = ($summary['total_income'] ?? 0) - ($summary['total_expense'] ?? 0);
+        if ($savings > 0) {
+            $savingsRate = $summary['total_income'] > 0 ? ($savings / $summary['total_income']) * 100 : 0;
+            $insights[] = "Tabungan bulan ini: Rp " . number_format($savings) . " (" . round($savingsRate, 1) . "%)";
+        } else {
+            $insights[] = "⚠️ Defisit bulan ini: Rp " . number_format(abs($savings));
+        }
+
+        return $insights;
+    }
+
+    /**
+     * API endpoint for AI analysis
+     */
+    public function analyze(Request $request)
+    {
+        $user = auth()->user();
+
+        // Data yang sama dengan index
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        $summary = $this->getMonthlySummary($user->id, $startOfMonth, $endOfMonth);
+        $topCategories = $this->getTopCategories($user->id, $startOfMonth, $endOfMonth);
+        $budgets = $this->getUserBudgets($user->id);
+
+        // Generate AI analysis
+        $analysis = $this->generateAIAnalysis($summary, $topCategories, $budgets);
+
+        return response()->json([
+            'success' => true,
+            'analysis' => $analysis,
+            'generated_at' => now()->toDateTimeString()
+        ]);
+    }
+
+    /**
+     * Generate AI analysis logic
+     */
+    private function generateAIAnalysis($summary, $topCategories, $budgets)
+    {
+        $totalIncome = $summary['total_income'] ?? 0;
+        $totalExpense = $summary['total_expense'] ?? 0;
+        $savings = $totalIncome - $totalExpense;
+        $savingsRate = $totalIncome > 0 ? ($savings / $totalIncome) * 100 : 0;
+
+        // Determine status
+        if ($totalExpense > $totalIncome) {
+            $status = 'deficit';
+            $healthScore = max(10, min(40, 30 + ($savingsRate / 10)));
+        } elseif ($savingsRate < 20) {
+            $status = 'warning';
+            $healthScore = max(40, min(70, 50 + ($savingsRate / 2)));
+        } else {
+            $status = 'healthy';
+            $healthScore = max(70, min(95, 75 + ($savingsRate / 4)));
+        }
+
+        // Generate anomalies
+        $anomalies = [];
+        if ($totalExpense > $totalIncome * 0.8) {
+            $anomalies[] = [
+                'title' => "Pengeluaran Mendekati Pemasukan",
+                'description' => "Pengeluaran mencapai " . round(($totalExpense / $totalIncome) * 100) . "% dari pemasukan bulanan."
+            ];
+        }
+
+        // Check for unusual spending in categories
+        $avgExpense = $totalExpense / max(1, count($topCategories));
+        foreach ($topCategories as $cat) {
+            if ($cat['amount'] > $avgExpense * 3) { // 3x dari rata-rata
                 $anomalies[] = [
-                    'title' => "Pengeluaran {$category['name']} Terlalu Tinggi",
-                    'description' => "Pengeluaran untuk {$category['name']} mencapai " . number_format($category['amount']) . " (" . round(($category['amount'] / $totalIncome) * 100) . "% dari pemasukan)"
+                    'title' => "Pengeluaran Tinggi di " . $cat['name'],
+                    'description' => "Kategori ini menghabiskan Rp " . number_format($cat['amount']) . " (" . round(($cat['amount'] / $totalExpense) * 100) . "% dari total pengeluaran)."
                 ];
             }
         }
 
-        return $anomalies;
+        // Generate insights
+        $insights = [[
+            'title' => "Keseimbangan Keuangan",
+            'description' => $savingsRate >= 20
+                ? "Bagus! Anda menabung " . round($savingsRate) . "% dari pemasukan bulanan."
+                : "Tabungan sebesar " . round($savingsRate) . "% dari pemasukan. Targetkan minimal 20%."
+        ]];
+
+        // Generate advice
+        $advice = [];
+        if ($status === 'deficit') {
+            $advice[] = [
+                'title' => "Prioritaskan Pengurangan Pengeluaran",
+                'description' => "Identifikasi 2-3 kategori pengeluaran terbesar yang bisa dikurangi."
+            ];
+        } elseif ($status === 'warning') {
+            $advice[] = [
+                'title' => "Tingkatkan Tabungan",
+                'description' => "Alokasikan 5% lebih banyak ke tabungan bulan depan."
+            ];
+        }
+
+        // Saving opportunities
+        $savingOpportunities = [];
+        $potentialSavings = round($totalExpense * 0.12);
+        if ($potentialSavings > 10000) {
+            $savingOpportunities[] = [
+                'title' => "Optimasi Pengeluaran Rutin",
+                'description' => "Potensi hemat Rp " . number_format($potentialSavings) . " per bulan dengan efisiensi 12%."
+            ];
+        }
+
+        return [
+            'status' => $status,
+            'message' => $this->getStatusMessage($status, $savingsRate),
+            'health_score' => round($healthScore),
+            'anomalies' => $anomalies,
+            'insights' => $insights,
+            'advice' => $advice,
+            'saving_opportunities' => $savingOpportunities,
+        ];
     }
 
-    private function generateInsights($data)
+    private function getStatusMessage($status, $savingsRate)
     {
-        // Implementation for insights generation
-        return [];
+        switch ($status) {
+            case 'healthy':
+                return "Keuangan Anda dalam kondisi baik dengan tabungan " . round($savingsRate) . "% dari pemasukan.";
+            case 'warning':
+                return "Perhatian: tingkat tabungan rendah (" . round($savingsRate) . "%).";
+            case 'deficit':
+                return "Defisit terdeteksi. Evaluasi pengeluaran segera.";
+            default:
+                return "Analisis keuangan selesai.";
+        }
     }
 
-    private function generateAdvice($data)
+    /**
+     * Export report
+     */
+    public function export(Request $request)
     {
-        // Implementation for advice generation
-        return [];
-    }
+        $user = auth()->user();
+        $data = $this->indexData(); // Reuse index data
 
-    private function generateSavingOpportunities($data)
-    {
-        // Implementation for saving opportunities
-        return [];
-    }
+        // Generate PDF atau format lain
+        // Implementasi sesuai kebutuhan
 
-    private function generateMessage($status, $data)
-    {
-        // Implementation for message generation
-        return "Analisis keuangan Anda selesai.";
-    }
-
-    private function calculateHealthScore($data)
-    {
-        // Implementation for health score calculation
-        return 75;
+        return response()->json([
+            'success' => true,
+            'message' => 'Export feature coming soon'
+        ]);
     }
 }
