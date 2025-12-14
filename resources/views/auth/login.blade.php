@@ -15,19 +15,34 @@
                                         <!-- (isi SVG sama seperti sebelumnya) -->
                                     </svg>
                                 </span>
-                                <span class="app-brand-text demo text-body fw-bolder">Finji</span>
+                                <span class="app-brand-text demo text-body fw-bolder">Login</span>
                             </a>
                         </div>
                         <!-- /Logo -->
 
                         <h4 class="mb-2">Selamat datang! 👋</h4>
                         <p class="mb-4">Silakan masuk ke akun Anda untuk mulai menggunakan aplikasi.</p>
+                        @if (session('error'))
+                            <div class="alert alert-danger">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+                        @if (session('success'))
+                            <div class="alert alert-success">
+                                {{ session('success') }}
+                            </div>
+                        @endif
 
-                        <form id="formAuthentication" class="mb-3" action="index.html" method="POST">
+
+                        <form id="formAuthentication" class="mb-3" action="{{ route('login.proccess') }}" method="POST">
+                            @csrf
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
-                                <input type="text" class="form-control" id="email" name="email"
-                                    placeholder="Masukkan email Anda" autofocus />
+                                <input type="text" class="form-control @error('password') is-invalid @enderror"
+                                    id="email" name="email" placeholder="Masukkan email Anda" autofocus />
+                                @error('email')
+                                    <small class="text-danger">{{ $message }}</small>
+                                @enderror
                             </div>
 
                             <div class="mb-3 form-password-toggle">
@@ -35,10 +50,14 @@
                                     <label class="form-label" for="password">Kata Sandi</label>
                                 </div>
                                 <div class="input-group input-group-merge">
-                                    <input type="password" id="password" class="form-control" name="password"
+                                    <input type="password" id="password"
+                                        class="form-control @error('password') is-invalid @enderror" name="password"
                                         placeholder="••••••••••••" aria-describedby="password" />
                                     <span class="input-group-text cursor-pointer"><i class="bx bx-hide"></i></span>
                                 </div>
+                                @error('password')
+                                    <small class="text-danger">{{ $message }}</small>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
