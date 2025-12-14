@@ -16,73 +16,76 @@
 
                 <div class="card-body">
 
-                    <form action="{{ route('transactions.store') }}" method="POST">
+                    <form action="{{ route('transactions.update', $transaction->id) }}" method="POST">
                         @csrf
+                        @method('PUT')
 
-                        {{-- Transaction Type --}}
+                        {{-- Type --}}
                         <div class="mb-3">
-                            <label class="form-label d-block mb-2">Jenis Transaksi</label>
-
+                            <label class="form-label">Jenis Transaksi</label>
                             <div class="row g-2">
-
-                                {{-- INCOME --}}
                                 <div class="col-6">
-                                    <input type="radio" class="btn-check" name="type" id="type-income" value="income"
-                                        autocomplete="off" checked>
-                                    <label class="btn btn-outline-success w-100 py-2" for="type-income">
-                                        <i class="bx bx-trending-up me-1"></i> Pemasukan
+                                    <input type="radio" class="btn-check" name="type" id="income" value="income"
+                                        {{ old('type', $transaction->type) === 'income' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-success w-100" for="income">
+                                        Pemasukan
                                     </label>
                                 </div>
-
-                                {{-- EXPENSE --}}
                                 <div class="col-6">
-                                    <input type="radio" class="btn-check" name="type" id="type-expense" value="expense"
-                                        autocomplete="off">
-                                    <label class="btn btn-outline-danger w-100 py-2" for="type-expense">
-                                        <i class="bx bx-trending-down me-1"></i> Pengeluaran
+                                    <input type="radio" class="btn-check" name="type" id="expense" value="expense"
+                                        {{ old('type', $transaction->type) === 'expense' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-danger w-100" for="expense">
+                                        Pengeluaran
                                     </label>
                                 </div>
-
                             </div>
                         </div>
 
-                        {{-- Transaction Category --}}
+                        {{-- Category --}}
                         <div class="mb-3">
                             <label class="form-label">Kategori</label>
-                            <select class="form-select" name="transaction_category_id" required>
-                                <option value="">-- Pilih Kategori --</option>
+                            <select name="transaction_category_id" id="categorySelect"
+                                class="form-select @error('transaction_category_id') is-invalid @enderror">
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}">
-                                        {{ $category->name }} ({{ ucfirst($category->type) }})
+                                    <option value="{{ $category->id }}" data-type="{{ $category->type }}"
+                                        {{ old('transaction_category_id', $transaction->transaction_category_id) == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
                                     </option>
                                 @endforeach
                             </select>
+                            @error('transaction_category_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         {{-- Amount --}}
                         <div class="mb-3">
                             <label class="form-label">Jumlah</label>
-                            <input type="number" class="form-control" name="amount" placeholder="Masukkan jumlah..."
-                                required>
+                            <input type="number" class="form-control @error('amount') is-invalid @enderror" name="amount"
+                                value="{{ old('amount', $transaction->amount) }}" required>
                         </div>
 
-                        {{-- Transaction Date --}}
+                        {{-- Date --}}
                         <div class="mb-3">
-                            <label class="form-label">Tanggal Transaksi</label>
-                            <input type="date" class="form-control" name="transaction_date" required>
+                            <label class="form-label">Tanggal</label>
+                            <input type="date" class="form-control" name="transaction_date"
+                                value="{{ old('transaction_date', $transaction->transaction_date->toDateString()) }}">
                         </div>
 
                         {{-- Description --}}
                         <div class="mb-3">
-                            <label class="form-label">Deskripsi (Opsional)</label>
-                            <textarea class="form-control" name="description" rows="3" placeholder="Tambahkan catatan..."></textarea>
+                            <label class="form-label">Deskripsi</label>
+                            <textarea class="form-control" name="description" rows="3">{{ old('description', $transaction->description) }}</textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 mt-2">
-                            <i class="bx bx-save me-1"></i> Simpan Transaksi
-                        </button>
+                        <div class="d-flex gap-2">
 
+                            <button type="submit" class="btn btn-primary col-12">
+                                Simpan Perubahan
+                            </button>
+                        </div>
                     </form>
+
 
                 </div>
             </div>

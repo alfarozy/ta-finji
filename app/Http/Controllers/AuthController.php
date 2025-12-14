@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\UserBalance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -88,12 +89,13 @@ class AuthController extends Controller
         }
 
         // 4. Simpan user (password DI-HASH)
-        User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'whatsapp' => $normalizedWhatsapp,
             'password' => Hash::make($validated['password']),
         ]);
+        UserBalance::create(['user_id' => $user->id, 'balance' => 0]);
 
         // 5. Redirect ke login dengan pesan sukses
         return redirect()

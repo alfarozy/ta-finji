@@ -109,7 +109,7 @@
                                         Ringkasan keuangan {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}
                                     </h5>
 
-                                    <a href="#" class="btn btn-sm btn-primary">
+                                    <a href="{{ route('dashboard.financial-insight') }}" class="btn btn-sm btn-primary">
                                         Lihat insight
                                     </a>
                                 </div>

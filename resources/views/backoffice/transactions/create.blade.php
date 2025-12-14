@@ -24,65 +24,81 @@
                             <label class="form-label d-block mb-2">Jenis Transaksi</label>
 
                             <div class="row g-2">
-
-                                {{-- INCOME --}}
                                 <div class="col-6">
                                     <input type="radio" class="btn-check" name="type" id="type-income" value="income"
-                                        autocomplete="off" checked>
+                                        {{ old('type', 'income') === 'income' ? 'checked' : '' }}>
                                     <label class="btn btn-outline-success w-100 py-2" for="type-income">
                                         <i class="bx bx-trending-up me-1"></i> Pemasukan
                                     </label>
                                 </div>
 
-                                {{-- EXPENSE --}}
                                 <div class="col-6">
                                     <input type="radio" class="btn-check" name="type" id="type-expense" value="expense"
-                                        autocomplete="off">
+                                        checked>
                                     <label class="btn btn-outline-danger w-100 py-2" for="type-expense">
                                         <i class="bx bx-trending-down me-1"></i> Pengeluaran
                                     </label>
                                 </div>
-
                             </div>
+
+                            @error('type')
+                                <small class="text-danger">{{ $message }}</small>
+                            @enderror
                         </div>
 
-                        {{-- Transaction Category --}}
+                        {{-- Category --}}
                         <div class="mb-3">
                             <label class="form-label">Kategori</label>
-                            <select class="form-select" name="transaction_category_id" required>
+                            <select class="form-select @error('transaction_category_id') is-invalid @enderror"
+                                name="transaction_category_id" id="categorySelect" required>
                                 <option value="">-- Pilih Kategori --</option>
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}">
-                                        {{ $category->name }} ({{ ucfirst($category->type) }})
+                                    <option value="{{ $category->id }}" data-type="{{ $category->type }}"
+                                        {{ old('transaction_category_id') == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
                                     </option>
                                 @endforeach
                             </select>
+
+                            @error('transaction_category_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         {{-- Amount --}}
                         <div class="mb-3">
                             <label class="form-label">Jumlah</label>
-                            <input type="number" class="form-control" name="amount" placeholder="Masukkan jumlah..."
-                                required>
+                            <input type="number" class="form-control @error('amount') is-invalid @enderror" name="amount"
+                                value="{{ old('amount') }}" placeholder="Masukkan jumlah..." required>
+
+                            @error('amount')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        {{-- Transaction Date --}}
+                        {{-- Date --}}
                         <div class="mb-3">
                             <label class="form-label">Tanggal Transaksi</label>
-                            <input type="date" class="form-control" name="transaction_date" required>
+                            <input type="date" class="form-control @error('transaction_date') is-invalid @enderror"
+                                name="transaction_date" value="{{ old('transaction_date', now()->toDateString()) }}"
+                                required>
+
+                            @error('transaction_date')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         {{-- Description --}}
                         <div class="mb-3">
                             <label class="form-label">Deskripsi (Opsional)</label>
-                            <textarea class="form-control" name="description" rows="3" placeholder="Tambahkan catatan..."></textarea>
+                            <textarea class="form-control" name="description" rows="3" placeholder="Tambahkan catatan...">{{ old('description') }}</textarea>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 mt-2">
                             <i class="bx bx-save me-1"></i> Simpan Transaksi
                         </button>
-
                     </form>
+
 
                 </div>
             </div>
@@ -90,6 +106,30 @@
         </div>
     </div>
 @endsection
-
 @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const radios = document.querySelectorAll('input[name="type"]');
+            const select = document.getElementById('categorySelect');
+            const options = Array.from(select.options);
+
+            function filter(type) {
+                select.innerHTML = '';
+                const placeholder = new Option('-- Pilih Kategori --', '');
+                select.appendChild(placeholder);
+
+                options.forEach(opt => {
+                    if (opt.dataset.type === type) {
+                        select.appendChild(opt);
+                    }
+                });
+            }
+
+            filter(document.querySelector('input[name="type"]:checked').value);
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', () => filter(radio.value));
+            });
+        });
+    </script>
 @endpush

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transaction;
+use App\Models\UserBalance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -137,20 +138,23 @@ class DashboardController extends Controller
     {
         $userId = Auth::id();
 
+        $start = Carbon::now()->startOfMonth();
+        $end   = Carbon::now()->endOfMonth();
+
         // ===== Summary =====
         $totalIncome = Transaction::where('user_id', $userId)
             ->where('type', 'income')
+            ->whereBetween('transaction_date', [$start, $end])
             ->sum('amount');
 
         $totalExpense = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
+            ->whereBetween('transaction_date', [$start, $end])
             ->sum('amount');
 
-        $balance = $totalIncome - $totalExpense;
+        $balance = UserBalance::where('user_id', $userId)->value('balance');
 
         // ===== Chart (bulan berjalan, per hari) =====
-        $start = Carbon::now()->startOfMonth();
-        $end   = Carbon::now()->endOfMonth();
         $daysInMonth = $start->daysInMonth;
 
         $daily = Transaction::selectRaw('

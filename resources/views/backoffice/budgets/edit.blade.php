@@ -67,8 +67,8 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bx bx-save me-1"></i> Save Budget
+                            <button type="submit" class="btn btn-primary col-12">
+                                <i class="bx bx-save me-1"></i> Simpan anggaran
                             </button>
                         </div>
                     </form>

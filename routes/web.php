@@ -9,6 +9,7 @@ use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 
+//> done
 Route::prefix('auth')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/login', [AuthController::class, 'loginProccess'])->name('login.proccess');
@@ -18,10 +19,10 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/', [DashboardController::class, 'getDashboardSummary'])->name('dashboard.index');
+    Route::get('/', [DashboardController::class, 'getDashboardSummary'])->name('dashboard.index'); //> done
     Route::resource('transactions', TransactionController::class);
-    Route::resource('transactions-categories', TransactionCategoryController::class);
-    Route::resource('budgets', BudgetController::class);
+    Route::resource('transactions-categories', TransactionCategoryController::class)->except('show'); //> done
+    Route::resource('budgets', BudgetController::class); //> done
     Route::resource('bank-account', BankAccountController::class);
 
     Route::get('financial-insight', [DashboardController::class, 'financialInsight'])->name('dashboard.financial-insight');

@@ -65,7 +65,7 @@
                             @enderror
                         </div>
 
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary col-12">
                             <i class="bx bx-save me-1"></i> Simpan Anggaran
                         </button>
                     </form>

@@ -1,6 +1,13 @@
 @extends('layouts.backoffice')
 
 @section('title', 'Transactions')
+@push('styles')
+    <style>
+        .swal2-container {
+            z-index: 99999 !important;
+        }
+    </style>
+@endpush
 @section('content')
     <div class="content-wrapper">
         <!-- Content -->
@@ -86,6 +93,17 @@
                     </div>
                 </form>
                 {{-- /Filter --}}
+                @if (session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                @if (session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
 
 
                 <div class="table-responsive text-nowrap">
@@ -145,16 +163,14 @@
                                                     href="{{ route('transactions.edit', $transaction->id) }}">
                                                     <i class="bx bx-edit-alt me-1"></i> Edit
                                                 </a>
-                                                <form action="{{ route('transactions.destroy', $transaction->id) }}"
-                                                    method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="dropdown-item"
-                                                        onclick="return confirm('Are you sure?')">
-                                                        <i class="bx bx-trash me-1"></i> Delete
-                                                    </button>
-                                                </form>
+
+                                                <button type="button" class="dropdown-item text-danger"
+                                                    data-id="{{ $transaction->id }}"
+                                                    onclick="confirmDeleteTransaction(this)">
+                                                    <i class="bx bx-trash me-1"></i> Hapus
+                                                </button>
                                             </div>
+
                                         </div>
                                     </td>
                                 </tr>
@@ -204,6 +220,38 @@
         </div>
     </footer>
     <!-- / Footer -->
+    <form id="delete-transaction-form" method="POST" style="display:none;">
+        @csrf
+        @method('DELETE')
+    </form>
 
     <div class="content-backdrop fade"></div>
 @endsection
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        function confirmDeleteTransaction(el) {
+            const transactionId = el.dataset.id;
+            const form = document.getElementById('delete-transaction-form');
+
+            form.action = `/transactions/${transactionId}`;
+
+            Swal.fire({
+                title: 'Hapus transaksi?',
+                text: 'Transaksi yang dihapus akan mempengaruhi saldo.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        }
+    </script>
+@endpush
