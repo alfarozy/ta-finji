@@ -10,7 +10,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Update Transaction Category</h5>
                     <a href="{{ route('transactions.index') }}" class="btn btn-secondary btn-sm">
-                        <i class="bx bx-arrow-back me-1"></i> Back
+                        <i class="bx bx-arrow-back me-1"></i> Kembali
                     </a>
                 </div>
 

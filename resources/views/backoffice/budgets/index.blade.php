@@ -7,6 +7,46 @@
         <!-- Content -->
 
         <div class="container-xxl flex-grow-1 container-p-y">
+            <div class="col-lg-12 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="card-title d-flex align-items-start justify-content-between">
+                            <div class="avatar flex-shrink-0">
+                                <i class="fa fa-chart-pie fa-2x text-warning"></i>
+                            </div>
+                        </div>
+
+                        <span class="fw-semibold d-block mb-1">Anggaran Bulan Ini</span>
+
+                        <h5 class="mb-1">
+                            Rp{{ number_format($usedBudget, 0, ',', '.') }}
+                            <small class="text-muted">
+                                / Rp{{ number_format($totalBudget, 0, ',', '.') }}
+                            </small>
+                        </h5>
+                        @php
+                            if ($budgetPercentage < 70) {
+                                $color = 'bg-success';
+                            } elseif ($budgetPercentage < 100) {
+                                $color = 'bg-warning';
+                            } else {
+                                $color = 'bg-danger';
+                            }
+                        @endphp
+                        <div class="progress mb-1" style="height: 8px;">
+                            <div class="progress-bar {{ $color }}" role="progressbar"
+                                style="width: {{ $budgetPercentage }}%;" aria-valuenow="{{ $budgetPercentage }}"
+                                aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+
+                        <small class="text-muted">
+                            {{ $budgetPercentage }}% terpakai •
+                            Sisa Rp{{ number_format($remainingBudget, 0, ',', '.') }}
+                        </small>
+                    </div>
+                </div>
+            </div>
             <div class="card p-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="card-header">Anggaran bulanan : {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</h5>
@@ -17,6 +57,17 @@
                         </a>
                     </div>
                 </div>
+                @if (session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                @if (session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
 
                 <div class="table-responsive text-nowrap">
                     <table class="table table-hover mb-0">
@@ -27,7 +78,7 @@
                                 <th>Anggaran</th>
                                 <th>Digunakan</th>
                                 <th>Progres</th>
-                                <th>Aksi</th>
+                                <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
 
@@ -63,10 +114,14 @@
                                         </small>
                                     </td>
 
-                                    <td>
+                                    <td class="text-center">
                                         <a href="{{ route('budgets.edit', $item->id) }}"
                                             class="btn btn-sm btn-outline-secondary">
                                             <i class="bx bx-edit"></i>
+                                        </a>
+                                        <a href="{{ route('budgets.show', $item->id) }}"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="bx bx-file"></i>
                                         </a>
                                     </td>
 

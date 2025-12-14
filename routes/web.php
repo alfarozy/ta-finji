@@ -9,15 +9,11 @@ use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 
-// Route::get('/', [AuthController::class, 'index'])->name('welcome');
-
 Route::prefix('auth')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/login', [AuthController::class, 'loginProccess'])->name('login.proccess');
-
     Route::get('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/register', [AuthController::class, 'registerProccess'])->name('register.proccess');
-
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 

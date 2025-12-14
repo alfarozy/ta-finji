@@ -143,52 +143,59 @@
 
           <ul class="menu-inner py-1">
             <!-- Dashboard -->
-            <li class="menu-item active">
-              <a href="{{ route('dashboard.index') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-home-circle"></i>
-                <div>Dashboard</div>
-              </a>
+            <li class="menu-item {{ request()->routeIs('dashboard.index') ? 'active' : '' }}">
+                <a href="{{ route('dashboard.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-home-circle"></i>
+                    <div>Dashboard</div>
+                </a>
             </li>
+
 
             <!-- Layouts -->
 
-            <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
+            <li class="menu-item {{ request()->routeIs('transactions.*', 'transactions-categories.*') ? 'active open' : '' }}">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-money"></i>
-                <div data-i18n="Layouts">Transaksi</div>
-              </a>
+                <div>Transaksi</div>
+            </a>
 
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('transactions.index') }}" class="menu-link">
-                    <div data-i18n="Data">Data Transaksi</div>
-                  </a>
+
+            <ul class="menu-sub">
+                <li class="menu-item {{ request()->routeIs('transactions.*') ? 'active' : '' }}">
+                    <a href="{{ route('transactions.index') }}" class="menu-link">
+                        <div>Data Transaksi</div>
+                    </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('transactions-categories.index') }}" class="menu-link">
-                    <div data-i18n="category">Kategori</div>
-                  </a>
+
+                <li class="menu-item {{ request()->routeIs('transactions-categories.*') ? 'active' : '' }}">
+                    <a href="{{ route('transactions-categories.index') }}" class="menu-link">
+                        <div>Kategori</div>
+                    </a>
                 </li>
-              </ul>
-            </li>
-            <li class="menu-item">
-              <a href=" {{ route('budgets.index') }}" class="menu-link">
+            </ul>
+        </li>
+
+          <li class="menu-item {{ request()->routeIs('budgets.*') ? 'active' : '' }}">
+            <a href="{{ route('budgets.index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-wallet"></i>
-                <div data-i18n="Basic">Anggaran Bulanan</div>
+                <div>Anggaran Bulanan</div>
             </a>
-            </li>
-            <li class="menu-item">
-              <a href=" {{ route('dashboard.financial-insight') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-chart"></i>
-                <div data-i18n="Basic">Insight Keuangan</div>
-            </a>
-            </li>
-            <li class="menu-item">
-                <a href="{{ route('bank-account.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons bx bx-credit-card"></i>
-                    <div data-i18n="Basic">Akun Bank</div>
+        </li>
+
+            <li class="menu-item {{ request()->routeIs('dashboard.financial-insight') ? 'active' : '' }}">
+                <a href="{{ route('dashboard.financial-insight') }}" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-chart"></i>
+                    <div>Insight Keuangan</div>
                 </a>
             </li>
+
+            <li class="menu-item {{ request()->routeIs('bank-account.*') ? 'active' : '' }}">
+                <a href="{{ route('bank-account.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons bx bx-credit-card"></i>
+                    <div>Akun Bank</div>
+                </a>
+            </li>
+
           </ul>
         </aside>
         <!-- / Menu -->
@@ -272,7 +279,6 @@
     <script src="/finji/assets/vendor/libs/popper/popper.js"></script>
     <script src="/finji/assets/vendor/js/bootstrap.js"></script>
     <script src="/finji/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
-    @stack('scripts')
   <!-- Fontawesome cdn -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/js/all.min.js"
         integrity="sha512-6BTOlkauINO65nLhXhthZMtepgJSghyimIalb+crKRPhvhmsCdnIuGcVbR5/aQY2A+260iC1OPy1oCdB6pSSwQ=="
@@ -287,10 +293,10 @@
     <!-- Main JS -->
     <script src="/finji/assets/js/main.js"></script>
 
-    <!-- Page JS -->
-    <script src="/finji/assets/js/dashboards-analytics.js"></script>
-
     <!-- Place this tag in your head or just before your close body tag. -->
     <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+    @stack('scripts')
+
   </body>
 </html>
