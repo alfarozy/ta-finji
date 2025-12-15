@@ -73,9 +73,10 @@
 
                                     <!-- Bagian Kanan -->
                                     <div class="d-flex align-items-center">
-                                        <a href="https://wa.me/6281268174381" class="btn btn-light btn-sm fw-bold me-2"
-                                            target="_blank" style="color: #25D366; border-radius: 20px; padding: 6px 16px;">
-                                            <i class="bx bxl-whatsapp me-1"></i> Gunakan WhatsApp
+                                        <a href="https://wa.me/6285165718686?text=Halo%20Finji!"
+                                            class="btn btn-light btn-sm fw-bold me-2" target="_blank"
+                                            style="color: #188b42; border-radius: 20px; padding: 6px 16px;">
+                                            <i class="bx bxl-whatsapp me-1"></i> Cobain sekarang
                                         </a>
                                     </div>
                                 </div>

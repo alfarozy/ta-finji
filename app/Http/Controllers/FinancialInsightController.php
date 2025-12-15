@@ -47,6 +47,23 @@ class FinancialInsightController extends Controller
         $totalBalance = $this->getTotalBalance($user->id);
         $summary['balance'] = $totalBalance;
 
+        // 8. RECENT TRANSACTIONS
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->with('transactionCategory')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($transaction) {
+                return [
+                    'date' => $transaction->transaction_date->format('Y-m-d'),
+                    'category' => $transaction->transactionCategory->name ?? 'Uncategorized',
+                    'type' => $transaction->type,
+                    'amount' => 'Rp ' . number_format($transaction->amount, 0, ',', '.'),
+                    'description' => $transaction->description
+                ];
+            });
+
+
         return view('backoffice.financial-insight', [
             'summary' => $summary,
             'prevSummary' => $prevSummary,
@@ -56,6 +73,7 @@ class FinancialInsightController extends Controller
             'topCategories' => $topCategories,
             'budgets' => $budgets,
             'healthBreakdown' => $healthBreakdown,
+            'transactions' => $transactions
         ]);
     }
 
@@ -95,7 +113,9 @@ class FinancialInsightController extends Controller
         return [
             'total_income' => (float) ($result->total_income ?? 0),
             'total_expense' => (float) ($result->total_expense ?? 0),
-            'net_flow' => (float) ($result->net_flow ?? 0)
+            'net_flow' => (float) ($result->net_flow ?? 0),
+            'days' => $startDate->diffInDays($endDate) + 1
+
         ];
     }
 
@@ -160,7 +180,8 @@ class FinancialInsightController extends Controller
         return [
             'labels' => $labels,
             'income' => $incomeData,
-            'spending' => $expenseData
+            'spending' => $expenseData,
+            'days' => $startDate->diffInDays($endDate) + 1
         ];
     }
 
@@ -267,29 +288,22 @@ class FinancialInsightController extends Controller
 
         // 1. Savings Rate Score
         $savingsRate = $totalIncome > 0 ? ($savings / $totalIncome) * 100 : 0;
-        $savingsScore = min(100, max(0, $savingsRate * 2));
+
+        // 20% savings = score 100
+        $savingsScore = min(100, max(0, ($savingsRate / 20) * 100));
+
 
         // 2. Expense to Income Ratio Score
         $expenseRatio = $totalIncome > 0 ? ($totalExpense / $totalIncome) * 100 : 100;
-        $expenseScore = $expenseRatio <= 80 ? 100 : max(0, 100 - (($expenseRatio - 80) * 5));
 
-        // 3. Budget Adherence Score
-        $budgetScore = 75;
-        if (!empty($budgets)) {
-            $adherenceScores = [];
-            foreach ($budgets as $budget) {
-                if ($budget['budget_amount'] > 0) {
-                    $usagePercent = ($budget['actual_spent'] / $budget['budget_amount']) * 100;
-                    // Score: 100% jika usage 0-100%, menurun jika over budget
-                    $score = $usagePercent <= 100 ?
-                        100 - ($usagePercent * 0.5) :
-                        max(0, 100 - (($usagePercent - 100) * 2));
-                    $adherenceScores[] = $score;
-                }
-            }
-            $budgetScore = !empty($adherenceScores) ?
-                round(array_sum($adherenceScores) / count($adherenceScores)) : 75;
+        if ($expenseRatio <= 60) {
+            $expenseScore = 100;
+        } elseif ($expenseRatio <= 80) {
+            $expenseScore = 100 - (($expenseRatio - 60) * 2.5);
+        } else {
+            $expenseScore = max(0, 50 - (($expenseRatio - 80) * 5));
         }
+
 
         return [
             [
@@ -301,11 +315,6 @@ class FinancialInsightController extends Controller
                 'metric' => 'Expense Control',
                 'score' => round($expenseScore),
                 'desc' => round($expenseRatio, 1) . '% dari pemasukan'
-            ],
-            [
-                'metric' => 'Budget Adherence',
-                'score' => round($budgetScore),
-                'desc' => !empty($budgets) ? count($budgets) . ' kategori' : 'Belum ada budget'
             ]
         ];
     }
@@ -342,20 +351,29 @@ class FinancialInsightController extends Controller
     {
         $totalIncome = $summary['total_income'] ?? 0;
         $totalExpense = $summary['total_expense'] ?? 0;
-        $savings = $totalIncome - $totalExpense;
-        $savingsRate = $totalIncome > 0 ? ($savings / $totalIncome) * 100 : 0;
+        $savingsRate = $totalIncome > 0 ? (($totalIncome - $totalExpense) / $totalIncome) * 100 : 0;
+        $expenseRatio = $totalIncome > 0 ? ($totalExpense / $totalIncome) * 100 : 100;
 
-        // Determine status
-        if ($totalExpense > $totalIncome) {
+        if ($expenseRatio > 100) {
+            // DEFICIT
             $status = 'deficit';
-            $healthScore = max(10, min(40, 30 + ($savingsRate / 10)));
-        } elseif ($savingsRate < 20) {
+            $healthScore = max(15, 40 - (($expenseRatio - 100) * 1.5));
+        } elseif ($savingsRate < 10) {
+            // WARNING
             $status = 'warning';
-            $healthScore = max(40, min(70, 50 + ($savingsRate / 2)));
+            $healthScore = 45 + ($savingsRate * 2);
+        } elseif ($savingsRate < 20) {
+            // FAIR
+            $status = 'fair';
+            $healthScore = 65 + (($savingsRate - 10) * 1.5);
         } else {
+            // HEALTHY
             $status = 'healthy';
-            $healthScore = max(70, min(95, 75 + ($savingsRate / 4)));
+            $healthScore = min(95, 80 + (($savingsRate - 20) * 0.75));
         }
+
+        $healthScore = round(max(10, min(95, $healthScore)));
+
 
         // Generate anomalies
         $anomalies = [];
@@ -478,14 +496,6 @@ class FinancialInsightController extends Controller
             ];
         }
 
-        // Add investment advice if savings are good
-        if ($savingsRate > 25 && $savings > 1000000) {
-            $savingOpportunities[] = [
-                'title' => "Peluang Investasi",
-                'description' => "Dengan tabungan Rp " . number_format($savings) . "/bulan, pertimbangkan investasi jangka panjang."
-            ];
-        }
-
         return [
             'status' => $status,
             'message' => $this->getStatusMessage($status, $savingsRate),
@@ -509,69 +519,5 @@ class FinancialInsightController extends Controller
             default:
                 return "Analisis keuangan selesai.";
         }
-    }
-
-    /**
-     * Export report
-     */
-    public function export(Request $request)
-    {
-        $user = Auth::user();
-        $type = $request->get('type', 'json');
-
-        // Get all data
-        $data = $this->getExportData($user->id);
-
-        if ($type === 'json') {
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-                'exported_at' => now()->toDateTimeString()
-            ]);
-        }
-
-        // For PDF or other formats, you can implement here
-        return response()->json([
-            'success' => false,
-            'message' => 'Format export belum tersedia'
-        ]);
-    }
-
-    private function getExportData($userId)
-    {
-        $now = now();
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
-
-        $summary = $this->getMonthlySummary($userId, $startOfMonth, $endOfMonth);
-        $topCategories = $this->getTopCategories($userId, $startOfMonth, $endOfMonth);
-        $budgets = $this->getUserBudgets($userId);
-        $analysis = $this->generateAIAnalysis($summary, $topCategories, $budgets);
-
-        // Get recent transactions
-        $recentTransactions = Transaction::where('user_id', $userId)
-            ->with('transactionCategory')
-            ->orderBy('transaction_date', 'desc')
-            ->limit(20)
-            ->get()
-            ->map(function ($transaction) {
-                return [
-                    'date' => $transaction->transaction_date->format('Y-m-d'),
-                    'category' => $transaction->transactionCategory->name ?? 'Uncategorized',
-                    'type' => $transaction->type,
-                    'amount' => $transaction->amount,
-                    'description' => $transaction->description
-                ];
-            });
-
-        return [
-            'period' => $now->format('F Y'),
-            'summary' => $summary,
-            'top_categories' => $topCategories,
-            'budgets' => $budgets,
-            'analysis' => $analysis,
-            'recent_transactions' => $recentTransactions,
-            'generated_at' => now()->toDateTimeString()
-        ];
     }
 }

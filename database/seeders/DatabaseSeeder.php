@@ -56,6 +56,11 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'tagihan-langganan',
                 'type' => TransactionCategory::TYPE_EXPENSE,
             ],
+            [
+                'name' => 'Hiburan',
+                'slug' => 'hiburan',
+                'type' => TransactionCategory::TYPE_EXPENSE,
+            ],
         ];
 
 

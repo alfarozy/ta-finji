@@ -119,7 +119,7 @@
                     <div>
                         <h5 class="card-header p-0 border-0 mb-1">Insight Keuangan</h5>
                         <p class="text-muted mb-0 small">Analisis keuangan pribadi oleh Finji AI Assistant — periode
-                            {{ date('F Y') }}</p>
+                            {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="d-flex gap-2">
                         <button id="btnRunAI" class="btn btn-outline-primary btn-sm" onclick="runAIAnalysis()">
@@ -165,12 +165,12 @@
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg"
                                                 d="M18 2.0845
-                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <path class="circle" stroke-dasharray="0, 100"
                                                 d="M18 2.0845
-                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                        a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <text x="18" y="20.35" class="percentage">50%</text>
                                         </svg>
                                     </div>
@@ -203,20 +203,19 @@
                         <div class="col-md-12 mb-4">
                             <div class="card h-100">
                                 <div class="card-header">
-                                    <h6 class="card-title mb-0">📉 Perbandingan Bulan-ke-Bulan</h6>
+                                    <h6 class="card-title mb-0">📉 Perbandingan Bulan sebelumya</h6>
                                 </div>
                                 <div class="card-body" id="momComparison">
                                     <!-- populated by JS -->
                                 </div>
                             </div>
                         </div>
-
                         <div class="col-md-12">
                             <div class="card h-100">
                                 <div class="card-header">
-                                    <h6 class="card-title mb-0">🔮 Perkiraan Arus Kas (30 hari)</h6>
+                                    <h6 class="card-title mb-0">🚨 Deteksi Anomali & Peringatan</h6>
                                 </div>
-                                <div class="card-body" id="cashflowForecast">
+                                <div class="card-body" id="anomaliesSection">
                                     <!-- populated by JS -->
                                 </div>
                             </div>
@@ -226,7 +225,8 @@
 
                 <!-- Actionable Recommendations & Anomalies -->
                 <div class="row mb-4">
-                    <div class="col-md-6">
+
+                    <div class="col-md-12">
                         <div class="card h-100">
                             <div class="card-header">
                                 <h6 class="card-title mb-0">📌 Rekomendasi Tindakan</h6>
@@ -236,16 +236,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">🚨 Deteksi Anomali & Peringatan</h6>
-                            </div>
-                            <div class="card-body" id="anomaliesSection">
-                                <!-- populated by JS -->
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
 
                 <!-- Budget Overview (if any) -->
@@ -394,7 +385,22 @@
                                             </tr>
                                         </thead>
                                         <tbody id="recentTransactions">
-                                            <!-- Will be populated by JS -->
+                                            @foreach ($transactions as $transaction)
+                                                <tr>
+                                                    <td>{{ $transaction['date'] }}</td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            {{ $transaction['category'] }}
+                                                        </div>
+                                                    </td>
+                                                    <td>{{ $transaction['description'] ?? '-' }}</td>
+                                                    <td
+                                                        class="text-end {{ $transaction['type'] === 'income' ? 'text-success' : 'text-danger' }} fw-bold">
+                                                        {{ $transaction['type'] === 'income' ? '+' : '-' }}
+                                                        {{ $transaction['amount'] }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
                                         </tbody>
                                     </table>
                                 </div>
@@ -447,7 +453,6 @@
         // API endpoint URLs
         const ANALYZE_URL = '{{ route('financial.insight.analyze') }}';
         const CSRF_TOKEN = '{{ csrf_token() }}';
-        const TRANSACTIONS_URL = '{{ route('transactions.recent') }}';
         // Initialize UI setelah DOM siap
         document.addEventListener('DOMContentLoaded', function() {
             // Pastikan element ada sebelum render chart
@@ -460,9 +465,7 @@
             }
 
             renderMoMComparison(financialData);
-            renderCashflowForecast(financialData);
             renderHealthBreakdown(financialData.health_breakdown);
-            loadRecentTransactions();
             // Auto-run AI analysis setelah semua chart selesai
             setTimeout(() => {
                 runAIAnalysis();
@@ -503,13 +506,13 @@
                 if (result.success) {
                     currentAIResult = result.analysis;
                     updateUIWithAIResults(result.analysis);
-                    showNotification('success', '🎉 Finji telah menganalisis keuangan Anda!');
+                    // showNotification('success', '🎉 Finji telah menganalisis keuangan Anda!');
                 } else {
                     throw new Error('Analysis failed');
                 }
             } catch (error) {
                 console.error('AI Analysis error:', error);
-                showNotification('warning', 'Terjadi kesalahan saat analisis.');
+                // showNotification('warning', 'Terjadi kesalahan saat analisis.');
 
                 // Fallback to basic analysis
                 currentAIResult = generateBasicAnalysis();
@@ -580,23 +583,29 @@
             const badge = document.getElementById('healthScoreBadge');
 
             if (!circle || !percentageText || !title || !badge) return;
+            score = Math.max(0, Math.min(100, Math.round(score)));
 
-            // Update circle
-            const dash = (score / 100) * 100;
+            const dash = score;
             circle.setAttribute('stroke-dasharray', `${dash}, 100`);
             percentageText.textContent = `${score}%`;
 
-            // Update status
-            let statusText = 'Baik',
-                badgeClass = 'bg-success';
-            if (score < 60) {
-                statusText = 'Perlu Perhatian';
-                badgeClass = 'bg-warning';
-            }
+            // Status mapping
+            let statusText, badgeClass;
+
             if (score < 40) {
                 statusText = 'Kritis';
                 badgeClass = 'bg-danger';
+            } else if (score < 55) {
+                statusText = 'Perlu Perhatian';
+                badgeClass = 'bg-warning';
+            } else if (score < 70) {
+                statusText = 'Cukup';
+                badgeClass = 'bg-info';
+            } else {
+                statusText = 'Sehat';
+                badgeClass = 'bg-success';
             }
+
 
             title.textContent = statusText;
             badge.className = `badge ${badgeClass}`;
@@ -656,7 +665,7 @@
             allRecs.slice(0, 4).forEach((rec, index) => {
                 const cardClass = index < advice.length ? 'advice-card' : 'saving-card';
                 const icon = index < advice.length ? '📋' : '💰';
-                html += `<div class="col-md-12 mb-2">
+                html += `<div class="col-md-6 mb-2">
                     <div class="card ${cardClass} h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-start">
@@ -721,7 +730,7 @@
                 const options = {
                     chart: {
                         type: 'line',
-                        height: 270,
+                        height: 370,
                         toolbar: {
                             show: false
                         },
@@ -742,21 +751,12 @@
                         curve: 'smooth',
                         width: 3
                     },
-                    colors: ['#198754', '#dc3545'],
-                    fill: {
-                        type: 'gradient',
-                        gradient: {
-                            shadeIntensity: 0.5,
-                            opacityFrom: 0.7,
-                            opacityTo: 0.2,
-                            stops: [0, 90, 100]
-                        }
-                    },
+                    colors: ['#71dd37', '#ff3e1d'],
                     markers: {
-                        size: 4,
+                        size: 2,
                         hover: {
-                            size: 6
-                        }
+                            size: 3
+                        },
                     },
                     dataLabels: {
                         enabled: false
@@ -791,7 +791,7 @@
                     },
                     grid: {
                         borderColor: '#f1f1f1',
-                        strokeDashArray: 3,
+                        strokeDashArray: 2,
                         padding: {
                             top: 10,
                             right: 10,
@@ -963,6 +963,8 @@
 
             const cur = data.summary || {};
             const prev = data.prev_summary || null;
+            const curDays = cur.days || 30;
+            const prevDays = prev.days || 30;
 
             if (!prev || prev.total_income === undefined) {
                 el.innerHTML = `
@@ -979,6 +981,14 @@
             const incomePct = prev.total_income > 0 ? Math.round((incomeDelta / prev.total_income) * 100) : 0;
             const expensePct = prev.total_expense > 0 ? Math.round((expenseDelta / prev.total_expense) * 100) : 0;
             const savingsDelta = (cur.total_income - cur.total_expense) - (prev.total_income - prev.total_expense);
+
+            const avgDailyExpenseCur = cur.total_expense / curDays;
+            const avgDailyExpensePrev = prev.total_expense / prevDays;
+            const avgExpenseDelta = avgDailyExpenseCur - avgDailyExpensePrev;
+
+            const avgExpensePct = avgDailyExpensePrev > 0 ?
+                Math.round((avgExpenseDelta / avgDailyExpensePrev) * 100) :
+                0;
 
             el.innerHTML = `
                 <div class="row text-center">
@@ -1011,70 +1021,20 @@
                     </div>
                 </div>
                 <hr>
-                <div class="small text-muted">
-                    <i class="bx bx-info-circle"></i> Dibandingkan dengan bulan lalu
+                <div class="text-center">
+                    <small class="text-muted d-block">Rata-rata Pengeluaran Harian</small>
+                    <div class="fw-semibold">
+                        ${formatShortRupiah(avgDailyExpenseCur)}
+                        <small class="text-muted">/ hari</small>
+                    </div>
+                    <small class="${avgExpenseDelta <= 0 ? 'text-success' : 'text-danger'}">
+                        ${avgExpenseDelta <= 0 ? '↓' : '↑'} ${Math.abs(avgExpensePct)}%
+                        dibanding bulan lalu <b>${formatShortRupiah(avgDailyExpensePrev)}</b>
+                    </small>
                 </div>
             `;
         }
 
-        function renderCashflowForecast(data) {
-            const el = document.getElementById('cashflowForecast');
-            if (!el) return;
-
-            const dailyIncomeArr = Array.isArray(data.income) ? data.income : [];
-            const dailyExpenseArr = Array.isArray(data.spending) ? data.spending : [];
-
-            const days = Math.max(dailyIncomeArr.length, dailyExpenseArr.length, 1);
-            const sumIncome = dailyIncomeArr.reduce((a, b) => a + b, 0);
-            const sumExpense = dailyExpenseArr.reduce((a, b) => a + b, 0);
-
-            const avgDailyIncome = days > 0 ? sumIncome / days : 0;
-            const avgDailyExpense = days > 0 ? sumExpense / days : 0;
-            const avgDailyNet = avgDailyIncome - avgDailyExpense;
-
-            const daysForecast = 30;
-            const projectedNet = Math.round(avgDailyNet * daysForecast);
-            const currentBalance = data.summary?.balance || 0;
-            const projectedBalance = Math.round(currentBalance + projectedNet);
-
-            const status = projectedNet >= 0 ? 'positif' : 'negatif';
-            const statusColor = projectedNet >= 0 ? 'success' : 'danger';
-            const statusIcon = projectedNet >= 0 ? '📈' : '📉';
-
-            el.innerHTML = `
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="text-muted">Rata-rata harian</small>
-                        <small>${formatShortRupiah(avgDailyNet)}</small>
-                    </div>
-                    <div class="progress" style="height: 8px;">
-                        <div class="progress-bar bg-${statusColor}"
-                             role="progressbar"
-                             style="width: ${Math.min(100, Math.max(10, Math.abs(avgDailyNet) / 100000 * 100))}%">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="text-muted d-block">Proyeksi 30 hari</small>
-                            <div class="fw-bold fs-4 text-${statusColor}">
-                                ${statusIcon} ${formatShortRupiah(Math.abs(projectedNet))}
-                            </div>
-                        </div>
-                        <span class="badge bg-${statusColor}">${status}</span>
-                    </div>
-                </div>
-
-                <div class="border-top pt-2 small text-muted">
-                    <div class="d-flex justify-content-between">
-                        <span>Saldo saat ini:</span>
-                        <span>${formatCurrency(currentBalance)}</span>
-                    </div>
-                </div>
-            `;
-        }
 
         function renderHealthBreakdown(data) {
             const container = document.getElementById('healthBreakdown');
@@ -1099,23 +1059,27 @@
                 }
 
                 html += `
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center p-2 border rounded">
-                        <div class="d-flex align-items-center">
-                            <span class="me-2">${icon}</span>
-                            <div>
-                                <div class="small text-muted">${item.metric}</div>
-                                <div class="fw-bold">${item.score}%</div>
+               <div class="col-12">
+                    <div class="p-3 border rounded">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fs-5">${icon}</span>
+                                <div class="fw-semibold">${item.metric}</div>
+                            </div>
+                            <div class="fw-bold">${item.score}%</div>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div
+                                class="progress-bar ${color}"
+                                role="progressbar"
+                                style="width: ${pct}%"
+                                aria-valuenow="${pct}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
                             </div>
                         </div>
-                        <div style="width:120px">
-                            <div class="progress" style="height:8px;">
-                                <div class="progress-bar ${color}"
-                                     role="progressbar"
-                                     style="width:${pct}%">
-                                </div>
-                            </div>
-                            <div class="small text-muted text-center mt-1">${item.desc}</div>
+                        <div class="small text-muted mt-1">
+                            ${item.desc}
                         </div>
                     </div>
                 </div>`;
@@ -1227,67 +1191,6 @@
             };
         }
 
-        // Load recent transactions
-        async function loadRecentTransactions() {
-            // try {
-            const response = await fetch(TRANSACTIONS_URL || '/api/transactions/recent', {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                renderRecentTransactions(data);
-            } else {
-                // Fallback to sample data
-                renderRecentTransactions([]);
-
-                console.log('error transactions');
-            }
-            // } catch (error) {
-            //     console.error('Error loading transactions:', error);
-            //     renderRecentTransactions([]);
-            // }
-        }
-
-        function renderRecentTransactions(transactions) {
-            const container = document.getElementById('recentTransactions');
-            if (!transactions || transactions.length === 0) {
-                container.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-3">
-                            Tidak ada transaksi terbaru
-                        </td>
-                    </tr>`;
-                return;
-            }
-
-            let html = '';
-            transactions.slice(0, 5).forEach(transaction => {
-                const typeClass = transaction.type === 'income' ? 'transaction-income' : 'transaction-expense';
-                const typeIcon = transaction.type === 'income' ? 'bx bx-trending-up text-success' :
-                    'bx bx-trending-down text-danger';
-                const amountFormatted = formatCurrency(transaction.amount);
-
-                html += `<tr>
-                    <td>${formatDate(transaction.date)}</td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <i class="${typeIcon} me-2"></i>
-                            ${transaction.category || 'Uncategorized'}
-                        </div>
-                    </td>
-                    <td>${transaction.description || '-'}</td>
-                    <td class="text-end ${typeClass} fw-bold">
-                        ${transaction.type === 'income' ? '+' : '-'} ${amountFormatted}
-                    </td>
-                </tr>`;
-            });
-
-            container.innerHTML = html;
-        }
 
         // Clean up charts saat page unload
         window.addEventListener('beforeunload', function() {
