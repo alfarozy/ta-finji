@@ -88,9 +88,9 @@ class WhatsAppChatbotController extends Controller
         if (!$user) {
             $link = "https://finji-dev.my.id";
             $message = "Hai, sepertinya nomor WhatsApp ini belum terdaftar di Finji.
-                        Mohon pastikan nomor yang kamu gunakan untuk berinteraksi dengan Finji sudah benar dan terverifikasi.
-                        Kalau belum pernah daftar, silakan daftar di sini ya:
-                    \n" . $link;
+Mohon pastikan nomor yang kamu gunakan untuk berinteraksi dengan Finji sudah benar dan terverifikasi.
+Kalau belum pernah daftar, silakan daftar di sini ya:
+\n" . $link;
 
             WhatsappService::sendMessage($whatsappId, $message);
             return [false, 'Nomor belum terdaftar', []];

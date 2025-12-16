@@ -77,23 +77,7 @@ class FinancialInsightController extends Controller
         ]);
     }
 
-        $transactions = Transaction::where('user_id', auth()->id())
-            ->with('transactionCategory')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($transaction) {
-                return [
-                    'date' => $transaction->transaction_date->format('Y-m-d'),
-                    'category' => $transaction->transactionCategory->name ?? 'Uncategorized',
-                    'type' => $transaction->type,
-                    'amount' => $transaction->amount,
-                    'description' => $transaction->description
-                ];
-            });
 
-        return response()->json($transactions);
-    }
     /**
      * Get monthly financial summary - disesuaikan dengan field model Anda
      */
