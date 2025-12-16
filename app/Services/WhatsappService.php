@@ -9,17 +9,20 @@ class WhatsappService
 {
     public static function sendMessage(string $phone, string $message): array
     {
-        $endpoint = rtrim(config('services.whatsapp.host'), '/') . '/message/send-text';
-        $session = 'finji';
+        $endpoint = trim(config('services.whatsapp.host'), '/') . '/api/whatsapp/messages/text';
 
         try {
-            $response = Http::withHeaders([
-                'key' => config('services.whatsapp.key'),
-            ])->get($endpoint, [
-                'session' => $session,
-                'to'      => $phone,
-                'text'    => $message,
-            ]);
+            $response = Http::timeout(60)
+                ->withHeaders([
+                    'X-API-Key' => config('services.whatsapp.key'),
+                    'Accept'    => 'application/json',
+                ])
+                ->post($endpoint, [
+                    'to'          => $phone,
+                    'text'        => $message,
+                    'preview_url' => false,
+                ]);
+
             if ($response->successful()) {
                 return [
                     'success' => true,
@@ -29,22 +32,23 @@ class WhatsappService
 
             Log::error('WhatsApp API response failed', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'body'   => $response->body(),
             ]);
 
             return [
                 'success' => false,
-                'error' => $response->body(),
+                'error'  => $response->body(),
                 'status' => $response->status(),
             ];
         } catch (\Throwable $e) {
+
             Log::error('WhatsApp sendMessage failed', [
                 'message' => $e->getMessage(),
             ]);
 
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ];
         }
     }
