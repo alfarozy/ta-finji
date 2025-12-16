@@ -7,7 +7,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinancialInsightController;
 use App\Http\Controllers\TransactionCategoryController;
 use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\WhatsAppChatbotController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -33,8 +32,3 @@ Route::middleware('auth')->group(function () {
     Route::post('/financial-insight/analyze', [FinancialInsightController::class, 'analyze'])
         ->name('financial.insight.analyze');
 });
-//> cllback whatsapp asisten
-Route::match(['GET', 'POST'], '/Finji-webhook/ai-response/message', [WhatsAppChatbotController::class, 'webhookHandle']);
-
-//> callback moota API (sinc transaction)
-Route::post('/callback/moota', [TransactionController::class, 'callbackMoota'])->name('callback.moota');

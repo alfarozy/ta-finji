@@ -76,11 +76,12 @@ class WhatsAppChatbotController extends Controller
                 'from' => $from,
                 'message' => $rawMessage,
             ]);
-            return response()->json([
-                'success' => true,
+
+            return [
+                'success' => false,
                 'message' => 'Nomor atau pesan tidak valid.',
                 'data' => $result ?? []
-            ], 400);
+            ];
         }
 
         //> check user whatsapp
@@ -95,11 +96,11 @@ class WhatsAppChatbotController extends Controller
 
             WhatsappService::sendMessage($whatsappId, $message);
 
-            return response()->json([
-                'success' => true,
+            return [
+                'success' => false,
                 'message' => 'Nomor belum terdaftar',
                 'data' => $result ?? []
-            ], 400);
+            ];
         }
 
 
@@ -120,26 +121,26 @@ class WhatsAppChatbotController extends Controller
                 case 'chat':
                     $response = $parsed['response'];
                     WhatsappService::sendMessage($user->whatsapp, $response);
-                    return response()->json([
+                    return [
                         'success' => true,
                         'message' => 'Pesan berhasil dikirim.',
                         'data' => $result ?? []
-                    ], 200);
+                    ];
                 default:
                     Log::info($parsed);
-                    return response()->json([
-                        'success' => true,
+                    return [
+                        'success' => false,
                         'message' => 'Maaf, terjadi kesalahan. Silakan coba lagi.',
                         'data' => $result ?? []
-                    ], 400);
+                    ];
             }
         } catch (\Throwable $e) {
             Log::error('Message processing failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => true,
+            return [
+                'success' => false,
                 'message' => 'Maaf, terjadi kesalahan. Silakan coba lagi.',
                 'data' => $result ?? []
-            ], 400);
+            ];
         }
     }
 
@@ -287,7 +288,11 @@ EOT;
     {
         // Validate transaction data
         if (empty($parsed['amount']) || !is_numeric($parsed['amount']) || !$parsed['description']) {
-            return [false, 'Jumlah tidak valid', []];
+            return [
+                'success' => false,
+                'message' => 'Jumlah tidak valid',
+                'data' => $result ?? []
+            ];
         }
 
         // Create transaction
@@ -313,13 +318,21 @@ EOT;
 
         WhatsappService::sendMessage($user->whatsapp, $response);
 
-        return [true, $parsed['response'], []];
+        return [
+            'success' => true,
+            'message' => $parsed['response'],
+            'data' => $result ?? []
+        ];
     }
 
     protected function handleMultipleRecordAction($user, $parsed)
     {
         if (empty($parsed['transactions']) || !is_array($parsed['transactions'])) {
-            return [false, 'Tidak ada transaksi yang valid', []];
+            return [
+                'success' => false,
+                'message' => 'Jumlah tidak valid',
+                'data' => $result ?? []
+            ];
         }
 
         $userBalance = UserBalance::where('user_id', $user->id)->first();
@@ -353,7 +366,11 @@ EOT;
 
         WhatsappService::sendMessage($user->whatsapp, $response);
 
-        return [true, $response, []];
+        return [
+            'success' => true,
+            'message' => $response,
+            'data' => $result ?? []
+        ];
     }
 
     public function mapCategory($categoryName, $type)
