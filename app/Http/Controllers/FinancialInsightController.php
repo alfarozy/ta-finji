@@ -92,11 +92,21 @@ class FinancialInsightController extends Controller
             ')
             ->first();
 
+        // Cari tanggal transaksi terakhir
+        $lastTransactionDate = Transaction::where('user_id', $userId)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->max('transaction_date');
+
+        // Hitung jumlah hari sampai transaksi terakhir
+        $days = $lastTransactionDate
+            ? $startDate->diffInDays(\Carbon\Carbon::parse($lastTransactionDate)) + 1
+            : 0;
+
         return [
             'total_income' => (float) ($result->total_income ?? 0),
             'total_expense' => (float) ($result->total_expense ?? 0),
             'net_flow' => (float) ($result->net_flow ?? 0),
-            'days' => $startDate->diffInDays($endDate) + 1
+            'days' => $days
 
         ];
     }
@@ -159,11 +169,21 @@ class FinancialInsightController extends Controller
             }
         }
 
+        // Cari tanggal transaksi terakhir
+        $lastTransactionDate = Transaction::where('user_id', $userId)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->max('transaction_date');
+
+        // Hitung jumlah hari sampai transaksi terakhir
+        $days = $lastTransactionDate
+            ? $startDate->diffInDays(\Carbon\Carbon::parse($lastTransactionDate)) + 1
+            : 0;
+
         return [
             'labels' => $labels,
             'income' => $incomeData,
             'spending' => $expenseData,
-            'days' => $startDate->diffInDays($endDate) + 1
+            'days' => $days
         ];
     }
 

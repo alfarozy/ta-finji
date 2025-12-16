@@ -115,21 +115,28 @@
         <div class="container-xxl flex-grow-1 container-p-y">
             <div class="card p-3">
                 <!-- Header -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
+                <div class="row mb-3 justify-content-between">
+                    <div class="col-12 col-md-6">
                         <h5 class="card-header p-0 border-0 mb-1">Insight Keuangan</h5>
-                        <p class="text-muted mb-0 small">Analisis keuangan pribadi oleh Finji AI Assistant — periode
-                            {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</p>
+                        <p class="text-muted mb-0 small">
+                            Analisis keuangan pribadi oleh Finji AI Assistant — periode
+                            {{ \Carbon\Carbon::now()->translatedFormat('F Y') }}
+                        </p>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button id="btnRunAI" class="btn btn-outline-primary btn-sm" onclick="runAIAnalysis()">
+
+                    <div class="col-12 col-md-6 text-end">
+                        <button id="btnRunAI" class="btn btn-outline-primary btn-sm flex-fill flex-md-grow-0"
+                            onclick="runAIAnalysis()">
                             <i class="bx bx-refresh me-1"></i> Generate Analysis
                         </button>
-                        <button id="btnDownload" class="btn btn-success btn-sm" onclick="downloadAIAnalysis()">
-                            <i class="bx bx-download me-1"></i> Export JSON
+
+                        <button id="btnDownload" class="btn btn-outline-info btn-sm flex-fill flex-md-grow-0"
+                            onclick="downloadAIAnalysis()">
+                            <i class="bx bx-download me-1"></i> Download Insight
                         </button>
                     </div>
                 </div>
+
 
                 <!-- AI Analysis Status -->
                 <div id="aiAnalysisStatus" class="mb-3" aria-live="polite">
@@ -165,12 +172,12 @@
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg"
                                                 d="M18 2.0845
-                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <path class="circle" stroke-dasharray="0, 100"
                                                 d="M18 2.0845
-                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
                                             <text x="18" y="20.35" class="percentage">50%</text>
                                         </svg>
                                     </div>
