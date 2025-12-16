@@ -40,5 +40,7 @@ return [
     'whatsapp' => [
         'key' => env('WA_GATEWAY_APIKEY'),
         'host' => env('WA_HOST'),
+        'token' => env('WHATSAPP_TOKEN'),
+
     ],
 ];

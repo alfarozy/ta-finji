@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ResponseJson;
 use App\Models\Transaction;
 use App\Models\TransactionCategory;
 use App\Models\User;
@@ -18,49 +19,50 @@ class WhatsAppChatbotController extends Controller
 
     public function webhookHandle(Request $request)
     {
-        // cek header
-        $providedKey = $request->header('key');
-        if ($providedKey != config('services.whatsapp.key')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid key',
-                'data' => []
-            ], 401); // Unauthorized
-        }
 
         try {
+            // Validasi payload webhook baru
             $validated = $request->validate([
-                'session' => 'required',
-                'from'    => 'required',
-                'message' => 'nullable',
+                'event' => 'required|string',
+                'timestamp' => 'required',
+                'data' => 'required|array',
             ]);
         } catch (ValidationException $e) {
-            Log::error('Validation problem: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Payload tidak valid',
-                'errors' => $e->errors(),
-                'data' => []
-            ], 422); // Unprocessable Entity
+            Log::error('Webhook validation error: ' . $e->getMessage());
+            return ResponseJson::failedResponse('Payload tidak valid', []);
         }
 
-        $result = $this->processMessage($validated);
+        $event = $validated['event'];
+        $data  = $validated['data'];
 
-        // Jika processMessage mengembalikan sesuatu
-        if (isset($result['success']) && !$result['success']) {
-            return response()->json([
-                'success' => false,
-                'message' => $result['message'] ?? 'Processing failed',
-                'data' => $result['data'] ?? []
-            ], 400); // Bad Request
+
+        // Hanya proses event message.received
+        if ($event !== 'message.received') {
+            return ResponseJson::successResponse('Event diterima', []);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Webhook processed successfully',
+        // Normalisasi ke bentuk yang dikenali FinjiService
+        $normalized = [
+            'from'         => $data['from'] ?? null,
+            'message'      => $data['message']['text'] ?? null,
+            'message_type' => $data['messageType'] ?? null,
+            'message_id'   => $data['messageId'] ?? null,
+            'contact_name' => $data['contact']['name'] ?? null,
+        ];
+
+
+        [$proceed, $message, $data] = $this->processMessage($normalized);
+
+        return [
+            'success' => false,
+            'message' => 'Nomor atau pesan tidak valid.',
             'data' => $result ?? []
-        ], 200); // OK
+        ];
+        if (!$proceed) {
+            Log::error('Validation problem: ' . $message);
+            return ResponseJson::failedResponse($message, $data);
+        }
+        return ResponseJson::successResponse($message, $data);
     }
 
     public function processMessage($payload)
@@ -77,11 +79,7 @@ class WhatsAppChatbotController extends Controller
                 'message' => $rawMessage,
             ]);
 
-            return [
-                'success' => false,
-                'message' => 'Nomor atau pesan tidak valid.',
-                'data' => $result ?? []
-            ];
+            return [false, 'Nomor atau pesan tidak valid.', []];
         }
 
         //> check user whatsapp
@@ -95,12 +93,7 @@ class WhatsAppChatbotController extends Controller
                     \n" . $link;
 
             WhatsappService::sendMessage($whatsappId, $message);
-
-            return [
-                'success' => false,
-                'message' => 'Nomor belum terdaftar',
-                'data' => $result ?? []
-            ];
+            return [false, 'Nomor belum terdaftar', []];
         }
 
 
@@ -111,39 +104,30 @@ class WhatsAppChatbotController extends Controller
             // Handle different actions
             switch ($parsed['action']) {
                 case 'record':
-                    return $this->handleRecordAction($user, $parsed);
+                    $this->handleRecordAction($user, $parsed);
+                    return [true, 'Pesan berhasil dikirim.', []];
 
                 case 'record_multiple':
-                    return $this->handleMultipleRecordAction($user, $parsed);
+                    $this->handleMultipleRecordAction($user, $parsed);
+                    return [true, 'Pesan berhasil dikirim.', []];
+
                 case 'help':
                 case 'not_transaction':
                 case 'dashboard_redirect':
                 case 'chat':
                     $response = $parsed['response'];
                     WhatsappService::sendMessage($user->whatsapp, $response);
-                    return [
-                        'success' => true,
-                        'message' => 'Pesan berhasil dikirim.',
-                        'data' => $result ?? []
-                    ];
+                    return [true, 'Pesan berhasil dikirim.', []];
+
                 default:
                     Log::info($parsed);
-                    return [
-                        'success' => false,
-                        'message' => 'Maaf, terjadi kesalahan. Silakan coba lagi.',
-                        'data' => $result ?? []
-                    ];
+                    return [false, 'Maaf, terjadi kesalahan. Silakan coba lagi.', []];
             }
         } catch (\Throwable $e) {
             Log::error('Message processing failed: ' . $e->getMessage());
-            return [
-                'success' => false,
-                'message' => 'Maaf, terjadi kesalahan. Silakan coba lagi.',
-                'data' => $result ?? []
-            ];
+            return [false, 'Maaf, terjadi kesalahan. Silakan coba lagi.', []];
         }
     }
-
 
     public function analyzeWithAI($message)
     {

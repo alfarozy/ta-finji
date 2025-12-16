@@ -10,7 +10,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 //> cllback whatsapp asisten
-Route::get('/Finji-webhook/ai-response/message', [WhatsAppChatbotController::class, 'webhookHandle']);
+Route::post('/Finji-webhook/ai-response/message', [WhatsAppChatbotController::class, 'webhookHandle']);
 
 //> callback moota API (sinc transaction)
 Route::post('/callback/moota', [TransactionController::class, 'callbackMoota'])->name('callback.moota');
