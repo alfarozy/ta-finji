@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinancialInsightController;
 use App\Http\Controllers\TransactionCategoryController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\WhatsAppChatbotController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -26,21 +27,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('budgets', BudgetController::class); //> done
     Route::resource('bank-account', BankAccountController::class);
 
-    // Route::get('financial-insight', [DashboardController::class, 'financialInsight'])->name('dashboard.financial-insight');
-});
-
-// Tambahkan di routes/web.php
-Route::middleware(['auth'])->group(function () {
     // Financial Insight routes
     Route::get('/financial-insight', [FinancialInsightController::class, 'index'])
         ->name('financial.insight');
-
     Route::post('/financial-insight/analyze', [FinancialInsightController::class, 'analyze'])
         ->name('financial.insight.analyze');
-    Route::get('/financial-insight/recent', [FinancialInsightController::class, 'recentTransaction'])
-        ->name('transactions.recent');
 });
 //> cllback whatsapp asisten
+Route::match(['GET', 'POST'], '/Finji-webhook/ai-response/message', [WhatsAppChatbotController::class, 'webhookHandle']);
 
 //> callback moota API (sinc transaction)
 Route::post('/callback/moota', [TransactionController::class, 'callbackMoota'])->name('callback.moota');

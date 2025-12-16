@@ -34,5 +34,11 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
+    'google' => [
+        'gemini_api_key' => env('GEMINI_API_KEY'),
+    ],
+    'whatsapp' => [
+        'key' => env('WA_GATEWAY_APIKEY'),
+        'host' => env('WA_HOST'),
+    ],
 ];

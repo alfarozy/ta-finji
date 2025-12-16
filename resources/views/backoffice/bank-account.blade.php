@@ -13,7 +13,7 @@
 
                 <!-- Kartu Ringkasan -->
                 <div class="row mb-4 justify-content-center">
-                    <div class="col-md-6 col-6 mb-4">
+                    <div class="col-md-6 col-12 mb-4">
                         <div class="card">
                             <div class="card-body">
                                 @if (true)
@@ -76,6 +76,13 @@
                 <form id="updateBankAccountForm">
                     <div class="modal-body">
                         <div class="row">
+                            <div class="alert alert-info mb-3" role="alert">
+                                <i class="bx bx-info-circle me-2"></i>
+                                <b>Akses hanya untuk baca data mutasi.</b> Mutasibank tidak dapat membuat perubahan atau
+                                melakukan
+                                transaksi melalui akun bank Anda. Kami berkerja sama dengan Moota.co untuk menyediakan
+                                layanan mutasi bank. Terimakasih.
+                            </div>
                             <div class="col-md-6 mb-3">
                                 <label for="edit_bank_name" class="form-label">Nama Bank</label>
                                 <select class="form-select" id="edit_bank_name" name="bank_name" required>
@@ -133,6 +140,15 @@
                 <form id="updateBankAccountForm">
                     <div class="modal-body">
                         <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-info mb-3" role="alert">
+                                    <i class="bx bx-info-circle me-2"></i>
+                                    <b>Akses hanya untuk baca data mutasi.</b> Mutasibank tidak dapat membuat perubahan atau
+                                    melakukan
+                                    transaksi melalui akun bank Anda. Kami berkerja sama dengan Moota.co untuk menyediakan
+                                    layanan mutasi bank. Terimakasih.
+                                </div>
+                            </div>
                             <div class="col-md-6 mb-3">
                                 <label for="edit_bank_name" class="form-label">Nama Bank</label>
                                 <select class="form-select" id="edit_bank_name" name="bank_name" required>

@@ -76,7 +76,7 @@
                                         <a href="https://wa.me/6285165718686?text=Halo%20Finji!"
                                             class="btn btn-light btn-sm fw-bold me-2" target="_blank"
                                             style="color: #188b42; border-radius: 20px; padding: 6px 16px;">
-                                            <i class="bx bxl-whatsapp me-1"></i> Cobain sekarang
+                                            <i class="bx bxl-whatsapp me-1"></i> Mulai sekarang
                                         </a>
                                     </div>
                                 </div>

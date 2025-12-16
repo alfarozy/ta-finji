@@ -77,8 +77,6 @@ class FinancialInsightController extends Controller
         ]);
     }
 
-    public function recentTransaction()
-    {
         $transactions = Transaction::where('user_id', auth()->id())
             ->with('transactionCategory')
             ->orderBy('created_at', 'desc')
