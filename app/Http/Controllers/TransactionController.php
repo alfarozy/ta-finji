@@ -149,6 +149,8 @@ class TransactionController extends Controller
             ->where('user_id', $userId)
             ->firstOrFail();
 
+
+
         $validated = $request->validate(
             [
                 'type' => ['required', 'in:income,expense'],
@@ -158,6 +160,12 @@ class TransactionController extends Controller
                 'description' => ['nullable', 'string', 'max:255'],
             ]
         );
+
+        if ($transaction->source === Transaction::SOURCE_MUTATION && $validated['amount'] !== $transaction->amount) {
+            return redirect()
+                ->route('transactions.index')
+                ->with('error', 'Nominal Transaksi ini tidak dapat diubah karena merupakan transaksi mutasi');
+        }
 
         // Validasi kategori sesuai type & user
         TransactionCategory::where('id', $validated['transaction_category_id'])
@@ -208,6 +216,12 @@ class TransactionController extends Controller
         $transaction = Transaction::where('id', $id)
             ->where('user_id', $userId)
             ->firstOrFail();
+
+        // if ($transaction->source === Transaction::SOURCE_MUTATION) {
+        //     return redirect()
+        //         ->route('transactions.index')
+        //         ->with('error', 'Transaksi ini tidak dapat diubah karena merupakan transaksi mutasi');
+        // }
 
         DB::transaction(function () use ($transaction, $userId) {
 

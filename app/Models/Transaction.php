@@ -14,10 +14,15 @@ class Transaction extends Model
         'description',
         'type',
         'transaction_date',
+        'source',
+        'external_id',
     ];
 
     const TYPE_INCOME = 'income';
     const TYPE_EXPENSE = 'expense';
+    const SOURCE_MANUAL = 'manual';
+    const SOURCE_WHATSAPP = 'whatsapp';
+    const SOURCE_MUTATION = 'mutation';
 
     protected $casts = [
         'transaction_date' => 'date',

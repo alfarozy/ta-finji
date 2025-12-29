@@ -111,6 +111,48 @@
     </script>
 @endpush
 @section('content')
+    <!-- Modal AI Analysis -->
+    <div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Analisis transaksi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form action="{{ route('financial.insight') }}" method="get">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small">Tanggal Mulai</label>
+                            <input type="date" name="start_date" id="startDate" class="form-control"
+                                value="{{ request('start_date') && strtotime(request('start_date')) ? date('Y-m-01', strtotime(request('start_date'))) : date('Y-m-01') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Tanggal Akhir</label>
+                            <input type="date" name="end_date" id="endDate" class="form-control"
+                                value="{{ request('end_date') ?? date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
+                        </div>
+
+                        <small class="text-muted">
+                            Maksimal rentang analisis adalah 30 hari.
+                        </small>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                            Batal
+                        </button>
+                        <button class="btn btn-primary btn-sm" type="submit" id="btnAnalyze">
+                            Analisis sekarang
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
     <div class="content-wrapper">
         <div class="container-xxl flex-grow-1 container-p-y">
             <div class="card p-3">
@@ -125,22 +167,17 @@
                     </div>
 
                     <div class="col-12 col-md-6 text-end">
-                        <button id="btnRunAI" class="btn btn-outline-primary btn-sm flex-fill flex-md-grow-0"
-                            onclick="runAIAnalysis()">
-                            <i class="bx bx-refresh me-1"></i> Generate Analysis
+                        <button class="btn btn-outline-primary btn-sm" onclick="openAIAnalysisModal()">
+                            <i class="bx bx-refresh me-1"></i> Generate analisis
                         </button>
 
-                        <button id="btnDownload" class="btn btn-outline-info btn-sm flex-fill flex-md-grow-0"
-                            onclick="downloadAIAnalysis()">
-                            <i class="bx bx-download me-1"></i> Download Insight
-                        </button>
+                        @if (request('start_date') && request('end_date'))
+                            <a href="{{ route('financial.insight.download', ['start_date' => htmlspecialchars(request('start_date')), 'end_date' => htmlspecialchars(request('end_date'))]) }}"
+                                class="btn btn-outline-info btn-sm flex-fill flex-md-grow-0" target="_blank">
+                                <i class="bx bx-download me-1"></i> Download Insight
+                            </a>
+                        @endif
                     </div>
-                </div>
-
-
-                <!-- AI Analysis Status -->
-                <div id="aiAnalysisStatus" class="mb-3" aria-live="polite">
-                    <!-- Will be populated by JavaScript -->
                 </div>
 
                 <!-- Financial Summary + Chart -->
@@ -167,29 +204,61 @@
                     <div class="col-lg-4 col-md-6 mb-3">
                         <div class="card h-100">
                             <div class="card-body d-flex flex-column align-items-center justify-content-center">
+
+                                @php
+                                    $score = $analysisStatus['score'] ?? 0;
+                                    $meta = $analysisStatus['meta'];
+                                @endphp
+
                                 <div class="text-center mb-3">
-                                    <div class="circular-progress mx-auto" id="healthScoreCircle" data-percentage="50">
-                                        <svg viewBox="0 0 36 36" class="circular-chart">
+
+                                    <div class="circular-progress mx-auto" data-percentage="{{ $score }}">
+
+                                        <svg viewBox="0 0 36 36" class="circular-chart {{ $analysisStatus['status'] }}">
+
                                             <path class="circle-bg"
                                                 d="M18 2.0845
-                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                            <path class="circle" stroke-dasharray="0, 100"
+                                                                                                                                 a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                 a 15.9155 15.9155 0 0 1 0 -31.831" />
+
+                                            <path class="circle" stroke-dasharray="{{ $score }}, 100"
                                                 d="M18 2.0845
-                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 31.831
-                                                                                                                                                                                                                                                                                                                                                                                                                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                            <text x="18" y="20.35" class="percentage">50%</text>
+                                                                                                                                 a 15.9155 15.9155 0 0 1 0 31.831
+                                                                                                                                 a 15.9155 15.9155 0 0 1 0 -31.831" />
+
+                                            <text x="18" y="20.35" class="percentage">
+                                                {{ $score }}%
+                                            </text>
                                         </svg>
                                     </div>
-                                    <h5 class="mt-2 mb-1" id="healthScoreTitle">Loading...</h5>
-                                    <span id="healthScoreBadge" class="badge bg-secondary">-</span>
+
+                                    @if (!empty($analysisStatus))
+                                        <h5 class="mt-2 mb-1">Kesehatan Keuangan</h5>
+
+                                        <span class="badge bg-{{ $meta['class'] }}">
+                                            {{ $meta['label'] }}
+                                        </span>
+
+                                        <p class="small text-muted mt-2 mb-0">
+                                        <div
+                                            class="alert alert-{{ $analysisStatus['meta']['class'] }} d-flex align-items-center mb-3">
+
+                                            <div>
+                                                <div class="small">
+                                                    {{ $analysisStatus['reasoning'] }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        </p>
+                                    @endif
+
                                 </div>
-                                <div class="health-breakdown w-100 px-2" id="healthBreakdown">
-                                    <!-- populated by JS -->
-                                </div>
+
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- Extra Insights: Category Breakdown, MoM, Cashflow -->
@@ -222,11 +291,33 @@
                                 <div class="card-header">
                                     <h6 class="card-title mb-0">🚨 Deteksi Anomali & Peringatan</h6>
                                 </div>
-                                <div class="card-body" id="anomaliesSection">
-                                    <!-- populated by JS -->
+
+                                <div class="card-body">
+
+                                    @if (empty($analysis['anomalies']))
+                                        <div class="text-center py-4 text-muted">
+                                            <i class="bx bx-check-circle fs-1 mb-2 text-success"></i>
+                                            <div>Tidak ada anomali terdeteksi</div>
+                                            <small>Pengeluaran Anda masih dalam batas wajar</small>
+                                        </div>
+                                    @else
+                                        @foreach ($analysis['anomalies'] as $anomaly)
+                                            <div class="card anomaly-card mb-2">
+                                                <div class="card-body">
+                                                    <h6 class="mb-1 text-warning">
+                                                        {{ $anomaly['title'] }}
+                                                    </h6>
+                                                    <p class="mb-0 small text-muted">
+                                                        {{ $anomaly['description'] }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @endif
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
@@ -238,8 +329,33 @@
                             <div class="card-header">
                                 <h6 class="card-title mb-0">📌 Rekomendasi Tindakan</h6>
                             </div>
-                            <div class="card-body" id="actionableRecommendations">
-                                <!-- populated by JS -->
+                            <div class="card-body">
+                                @if (empty($analysis['advice']))
+                                    <div class="text-muted small">
+                                        Tidak ada rekomendasi tindakan saat ini. Keuangan Anda dalam kondisi baik.
+                                    </div>
+                                @else
+                                    <div class="row">
+                                        @foreach ($analysis['advice'] as $rec)
+                                            <div class="col-md-6 mb-2">
+                                                <div class="card h-100">
+                                                    <div class="card-body">
+                                                        <div class="d-flex align-items-start">
+                                                            <span class="me-2">{{ $rec['icon'] ?? '' }}</span>
+                                                            <div>
+                                                                <h6 class="mb-1">{{ $rec['title'] }}</h6>
+                                                                <p class="mb-0 small text-muted">
+                                                                    {{ $rec['description'] }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
                             </div>
                         </div>
                     </div>
@@ -419,20 +535,15 @@
         </div>
     </div>
 
-    <!-- AI Analysis Modal -->
-    {{-- <div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body text-center py-4">
-                    <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
-                    <p class="mb-2">Finji sedang menganalisis transaksi Anda...</p>
-                    <div class="progress" style="height:6px">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
-                    </div>
-                </div>
-            </div>
+    <div id="analysisLoading" class="position-fixed top-0 start-0 w-100 h-100 d-none"
+        style="z-index: 2000; background: rgba(255,255,255,0.9);">
+        <div class="d-flex flex-column justify-content-center align-items-center h-100">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <strong>Menganalisis keuangan Anda...</strong>
+            <small class="text-muted mt-1">Harap tunggu beberapa saat</small>
         </div>
-    </div> --}}
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -457,9 +568,6 @@
         let summaryChartInstance = null;
         let categoryChartInstance = null;
 
-        // API endpoint URLs
-        const ANALYZE_URL = '{{ route('financial.insight.analyze') }}';
-        const CSRF_TOKEN = '{{ csrf_token() }}';
         // Initialize UI setelah DOM siap
         document.addEventListener('DOMContentLoaded', function() {
             // Pastikan element ada sebelum render chart
@@ -473,222 +581,8 @@
 
             renderMoMComparison(financialData);
             renderHealthBreakdown(financialData.health_breakdown);
-            // Auto-run AI analysis setelah semua chart selesai
-            setTimeout(() => {
-                runAIAnalysis();
-            }, 500);
+
         });
-
-        // Run AI Analysis
-        async function runAIAnalysis() {
-            if (isAnalyzing) return;
-
-            isAnalyzing = true;
-            setButtonsState(true);
-
-            try {
-                // Cek jika modal element ada
-                const modalElement = document.getElementById('aiAnalysisModal');
-                if (modalElement) {
-                    const modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                }
-
-                const response = await fetch(ANALYZE_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': CSRF_TOKEN,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    currentAIResult = result.analysis;
-                    updateUIWithAIResults(result.analysis);
-                    // showNotification('success', '🎉 Finji telah menganalisis keuangan Anda!');
-                } else {
-                    throw new Error('Analysis failed');
-                }
-            } catch (error) {
-                console.error('AI Analysis error:', error);
-                // showNotification('warning', 'Terjadi kesalahan saat analisis.');
-
-                // Fallback to basic analysis
-                currentAIResult = generateBasicAnalysis();
-                updateUIWithAIResults(currentAIResult);
-            } finally {
-                // Tutup modal jika ada
-                const modalElement = document.getElementById('aiAnalysisModal');
-                if (modalElement) {
-                    const modal = bootstrap.Modal.getInstance(modalElement);
-                    if (modal) modal.hide();
-                }
-
-                isAnalyzing = false;
-                setButtonsState(false);
-            }
-        }
-
-        // Update UI with AI results
-        function updateUIWithAIResults(result) {
-            if (!result) return;
-
-            updateAnalysisStatus(result.status, result.message);
-            updateHealthScore(result.health_score);
-            updateAnomaliesSection(result.anomalies);
-            updateRecommendations(result.advice, result.saving_opportunities);
-        }
-
-        // Update analysis status
-        function updateAnalysisStatus(status, message) {
-            const map = {
-                healthy: {
-                    cls: 'success',
-                    icon: '✅',
-                    text: 'SEHAT'
-                },
-                warning: {
-                    cls: 'warning',
-                    icon: '⚠️',
-                    text: 'PERHATIAN'
-                },
-                deficit: {
-                    cls: 'danger',
-                    icon: '❌',
-                    text: 'DEFISIT'
-                }
-            };
-
-            const meta = map[status] || map.healthy;
-            const el = document.getElementById('aiAnalysisStatus');
-            if (el) {
-                el.innerHTML = `
-                    <div class="alert alert-${meta.cls} d-flex align-items-center">
-                        <div class="me-3 fs-4">${meta.icon}</div>
-                        <div>
-                            <div class="fw-bold">Status: ${meta.text}</div>
-                            <div class="small text-muted">${message}</div>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Update health score circle
-        function updateHealthScore(score) {
-            const circle = document.querySelector('#healthScoreCircle .circle');
-            const percentageText = document.querySelector('#healthScoreCircle .percentage');
-            const title = document.getElementById('healthScoreTitle');
-            const badge = document.getElementById('healthScoreBadge');
-
-            if (!circle || !percentageText || !title || !badge) return;
-            score = Math.max(0, Math.min(100, Math.round(score)));
-
-            const dash = score;
-            circle.setAttribute('stroke-dasharray', `${dash}, 100`);
-            percentageText.textContent = `${score}%`;
-
-            // Status mapping
-            let statusText, badgeClass;
-
-            if (score < 40) {
-                statusText = 'Kritis';
-                badgeClass = 'bg-danger';
-            } else if (score < 55) {
-                statusText = 'Perlu Perhatian';
-                badgeClass = 'bg-warning';
-            } else if (score < 70) {
-                statusText = 'Cukup';
-                badgeClass = 'bg-info';
-            } else {
-                statusText = 'Sehat';
-                badgeClass = 'bg-success';
-            }
-
-
-            title.textContent = statusText;
-            badge.className = `badge ${badgeClass}`;
-            badge.textContent = statusText;
-        }
-
-        // Update anomalies section
-        function updateAnomaliesSection(anomalies) {
-            const el = document.getElementById('anomaliesSection');
-            if (!el) return;
-
-            if (!anomalies || anomalies.length === 0) {
-                el.innerHTML = `
-                    <div class="text-center py-4 text-muted">
-                        <i class="bx bx-check-circle fs-1 mb-2 text-success"></i>
-                        <div>Tidak Ada Anomali Terdeteksi</div>
-                        <small class="text-muted">Pengeluaran Anda normal bulan ini</small>
-                    </div>`;
-                return;
-            }
-
-            let html = '<div class="row">';
-            anomalies.slice(0, 4).forEach(a => {
-                html += `<div class="col-md-12 mb-2">
-                    <div class="card anomaly-card h-100">
-                        <div class="card-body">
-                            <h6 class="mb-1 text-warning">${a.title}</h6>
-                            <p class="mb-0 small text-muted">${a.description}</p>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            html += '</div>';
-
-            if (anomalies.length > 4) {
-                html += `<div class="text-center mt-2">
-                    <small class="text-muted">+ ${anomalies.length - 4} anomali lainnya</small>
-                </div>`;
-            }
-
-            el.innerHTML = html;
-        }
-
-        // Update recommendations
-        function updateRecommendations(advice = [], savingOpportunities = []) {
-            const el = document.getElementById('actionableRecommendations');
-            if (!el) return;
-
-            const allRecs = [...advice, ...savingOpportunities];
-
-            if (!allRecs || allRecs.length === 0) {
-                el.innerHTML = '<div class="text-muted small">Tidak ada rekomendasi saat ini.</div>';
-                return;
-            }
-
-            let html = '<div class="row">';
-            allRecs.slice(0, 4).forEach((rec, index) => {
-                const cardClass = index < advice.length ? 'advice-card' : 'saving-card';
-                const icon = index < advice.length ? '📋' : '💰';
-                html += `<div class="col-md-6 mb-2">
-                    <div class="card ${cardClass} h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-start">
-                                <span class="me-2">${icon}</span>
-                                <div>
-                                    <h6 class="mb-1">${rec.title}</h6>
-                                    <p class="mb-0 small text-muted">${rec.description}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            html += '</div>';
-            el.innerHTML = html;
-        }
 
         // Chart rendering functions dengan error handling
         function renderSummaryChart(data) {
@@ -857,7 +751,7 @@
                     <div class="text-center text-muted py-5">
                         <i class="bx bx-pie-chart-alt fs-1 mb-2"></i>
                         <div>Belum ada pengeluaran</div>
-                        <small class="text-muted">Tambah transaksi pengeluaran untuk melihat breakdown</small>
+                        <small class="text-muted">Tambah transaksi pengeluaran untuk melihat rincian</small>
                     </div>`;
 
                 if (elList) {
@@ -1042,7 +936,6 @@
             `;
         }
 
-
         function renderHealthBreakdown(data) {
             const container = document.getElementById('healthBreakdown');
             if (!container) return;
@@ -1124,81 +1017,6 @@
             return "Rp " + Math.round(num);
         }
 
-        function setButtonsState(disabled = false) {
-            const btnRun = document.getElementById('btnRunAI');
-            const btnDownload = document.getElementById('btnDownload');
-
-            if (btnRun) btnRun.disabled = disabled;
-            if (btnDownload) btnDownload.disabled = disabled || !currentAIResult;
-        }
-
-        function showNotification(type, message) {
-            // Simple toast notification
-            const toastId = 'toast-' + Date.now();
-            const toast = `
-                <div id="${toastId}" class="toast show align-items-center text-white bg-${type} border-0"
-                     style="position:fixed; top:20px; right:20px; z-index:9999;">
-                    <div class="d-flex">
-                        <div class="toast-body">${message}</div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto"
-                                data-bs-dismiss="toast" onclick="document.getElementById('${toastId}').remove()"></button>
-                    </div>
-                </div>`;
-
-            // Add new toast
-            document.body.insertAdjacentHTML('beforeend', toast);
-
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                const toastEl = document.getElementById(toastId);
-                if (toastEl) toastEl.remove();
-            }, 3000);
-        }
-
-        // Basic analysis for fallback
-        function generateBasicAnalysis() {
-            const totalIncome = financialData.summary?.total_income || 0;
-            const totalExpense = financialData.summary?.total_expense || 0;
-            const savings = totalIncome - totalExpense;
-            const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
-
-            let status = 'healthy',
-                healthScore = 75;
-            if (totalExpense > totalIncome) {
-                status = 'deficit';
-                healthScore = 35;
-            } else if (savingsRate < 20) {
-                status = 'warning';
-                healthScore = 55;
-            }
-
-            const anomalies = [];
-            if (totalIncome > 0 && (totalExpense / totalIncome) > 0.8) {
-                anomalies.push({
-                    title: "Pengeluaran Mendekati Pemasukan",
-                    description: `Pengeluaran mencapai ${Math.round((totalExpense/totalIncome)*100)}% dari pemasukan.`
-                });
-            }
-
-            return {
-                status,
-                message: status === 'healthy' ? 'Keuangan Anda dalam kondisi baik.' : status === 'warning' ?
-                    'Perhatian: tingkat tabungan rendah.' : 'Defisit: evaluasi pengeluaran segera.',
-                health_score: healthScore,
-                anomalies: anomalies,
-                insights: [{
-                    title: 'Analisis Dasar',
-                    description: 'Analisis menggunakan data transaksi bulan ini.'
-                }],
-                advice: [{
-                    title: 'Pantau Rutin',
-                    description: 'Lacak pengeluaran Anda secara berkala untuk menjaga kesehatan keuangan.'
-                }],
-                saving_opportunities: []
-            };
-        }
-
-
         // Clean up charts saat page unload
         window.addEventListener('beforeunload', function() {
             if (summaryChartInstance) {
@@ -1217,5 +1035,75 @@
                 year: 'numeric'
             });
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const startDate = '{{ request('start_date') }}';
+            const endDate = '{{ request('end_date') }}';
+
+            // Jika salah satu kosong → tampilkan modal
+            if (!startDate || !endDate) {
+                const modalEl = document.getElementById('aiAnalysisModal');
+                if (!modalEl) return;
+
+                const modal = new bootstrap.Modal(modalEl, {
+                    backdrop: 'static',
+                    keyboard: false
+                });
+
+                modal.show();
+            }
+        });
+
+        function openAIAnalysisModal() {
+
+            const modalGenerate = new bootstrap.Modal(
+                document.getElementById('aiAnalysisModal')
+            );
+            modalGenerate.show();
+        }
+
+        const MAX_RANGE_DAYS = 30;
+
+        function validateDateRange() {
+            const startInput = document.getElementById('startDate');
+            const endInput = document.getElementById('endDate');
+
+            if (!startInput.value || !endInput.value) return;
+
+            const start = new Date(startInput.value);
+            const end = new Date(endInput.value);
+
+            const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+
+            if (diffDays > MAX_RANGE_DAYS) {
+                alert('Rentang tanggal maksimal adalah 30 hari');
+
+                // Auto-correct: set startDate = endDate - 30 hari
+                const correctedStart = new Date(end);
+                correctedStart.setDate(end.getDate() - MAX_RANGE_DAYS);
+
+                startInput.value = correctedStart.toISOString().slice(0, 10);
+            }
+
+            if (start > end) {
+                alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir');
+                startInput.value = endInput.value;
+            }
+        }
+
+        document.getElementById('startDate').addEventListener('change', validateDateRange);
+        document.getElementById('endDate').addEventListener('change', validateDateRange);
+
+        document.querySelector('#aiAnalysisModal form')
+            ?.addEventListener('submit', function() {
+
+                // tutup modal
+                const modalEl = document.getElementById('aiAnalysisModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal?.hide();
+
+                // tampilkan loading
+                document.getElementById('analysisLoading')?.classList.remove('d-none');
+            });
     </script>
 @endpush

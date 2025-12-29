@@ -15,8 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('bank_name');
+            $table->string('moota_bank_id')->nullable();
             $table->string('account_number');
             $table->string('account_name');
+            $table->timestamp('last_synced_at')->nullable();
             $table->timestamps();
         });
     }

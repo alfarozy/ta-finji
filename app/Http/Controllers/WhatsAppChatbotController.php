@@ -287,6 +287,7 @@ EOT;
             'description' => $parsed['description'] ?? '',
             'type' => $parsed['type'] === 'income' ? 'income' : 'expense',
             'transaction_date' => $parsed['date'],
+            'source' => Transaction::SOURCE_WHATSAPP
         ]);
 
         $userBalance = UserBalance::where('user_id', $user->id)->first();
@@ -335,6 +336,8 @@ EOT;
                 'description' => $trx['description'] ?? '',
                 'type' => $trx['type'] === 'income' ? 'income' : 'expense',
                 'transaction_date' => $trx['date'],
+                'source' => Transaction::SOURCE_WHATSAPP
+
             ]);
 
             // Update saldo

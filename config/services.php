@@ -41,6 +41,10 @@ return [
         'key' => env('WA_GATEWAY_APIKEY'),
         'host' => env('WA_HOST'),
         'token' => env('WHATSAPP_TOKEN'),
-
+    ],
+    'moota' => [
+        'api_key' => env('MOOTA_API_KEY'),
+        'base_url' => 'https://api.moota.co',
+        'webhook_secret' => env('MOOTA_WEBHOOK_SECRET'),
     ],
 ];

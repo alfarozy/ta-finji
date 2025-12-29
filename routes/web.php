@@ -21,14 +21,15 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'getDashboardSummary'])->name('dashboard.index'); //> done
-    Route::resource('transactions', TransactionController::class);
+    Route::get('transactions/sync', [BankAccountController::class, 'syncTransactions'])->name('transactions.sync'); //> done
+    Route::resource('transactions', TransactionController::class); //> done
     Route::resource('transactions-categories', TransactionCategoryController::class)->except('show'); //> done
     Route::resource('budgets', BudgetController::class); //> done
-    Route::resource('bank-account', BankAccountController::class);
+    Route::resource('bank-account', BankAccountController::class); //> done
 
-    // Financial Insight routes
+    // done
     Route::get('/financial-insight', [FinancialInsightController::class, 'index'])
         ->name('financial.insight');
-    Route::post('/financial-insight/analyze', [FinancialInsightController::class, 'analyze'])
-        ->name('financial.insight.analyze');
+    Route::get('/financial-insight/download', [FinancialInsightController::class, 'downloadPdf'])
+        ->name('financial.insight.download');
 });

@@ -9,33 +9,42 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class FinancialInsightController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $now = now();
 
-        // Periode bulan ini
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
+        // Ambil dari request atau default bulan ini
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : $now->copy()->startOfMonth();
 
-        // Periode bulan sebelumnya
-        $startOfPrevMonth = $now->copy()->subMonth()->startOfMonth();
-        $endOfPrevMonth = $now->copy()->subMonth()->endOfMonth();
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : $now->copy()->endOfMonth();
 
+        $rangeDays = $startDate->diffInDays($endDate) + 1;
+
+        $startOfPrevPeriod = $startDate->copy()->subDays($rangeDays);
+        $endOfPrevPeriod = $endDate->copy()->subDays($rangeDays);
         // 1. SUMMARY BULAN INI
-        $summary = $this->getMonthlySummary($user->id, $startOfMonth, $endOfMonth);
+        $summary = $this->getMonthlySummary($user->id, $startDate, $endDate);
 
         // 2. SUMMARY BULAN SEBELUMNYA
-        $prevSummary = $this->getMonthlySummary($user->id, $startOfPrevMonth, $endOfPrevMonth);
+        $prevSummary = $this->getMonthlySummary($user->id, $startOfPrevPeriod, $endOfPrevPeriod);
 
         // 3. DATA TIME SERIES (30 hari terakhir)
-        $timeSeriesData = $this->getTimeSeriesData($user->id, $startOfMonth, $endOfMonth);
+        $timeSeriesData = $this->getTimeSeriesData($user->id, $startDate, $endDate);
 
         // 4. TOP CATEGORIES (pengeluaran bulan ini)
-        $topCategories = $this->getTopCategories($user->id, $startOfMonth, $endOfMonth);
+        $topCategories = $this->getTopCategories($user->id, $startDate, $endDate);
 
         // 5. BUDGETS USER
         $budgets = $this->getUserBudgets($user->id);
@@ -50,8 +59,8 @@ class FinancialInsightController extends Controller
         // 8. RECENT TRANSACTIONS
         $transactions = Transaction::where('user_id', auth()->id())
             ->with('transactionCategory')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
             ->orderBy('created_at', 'desc')
-            ->limit(10)
             ->get()
             ->map(function ($transaction) {
                 return [
@@ -63,8 +72,30 @@ class FinancialInsightController extends Controller
                 ];
             });
 
+        $analysis = $this->analyzeFinancial(
+            json_encode($transactions),
+            $request->filled('start_date'),
+            $request->filled('end_date')
+        );
+
+        $status = data_get($analysis, 'financial_health.status', 'healthy');
+
+        $statusMetaMap = [
+            'healthy' => ['class' => 'success', 'icon' => '✅', 'label' => 'SEHAT'],
+            'warning' => ['class' => 'warning', 'icon' => '⚠️', 'label' => 'PERHATIAN'],
+            'deficit' => ['class' => 'danger', 'icon' => '❌', 'label' => 'DEFISIT'],
+        ];
+
+        $analysisStatus = [
+            'status' => $status,
+            'score' => data_get($analysis, 'financial_health.score'),
+            'reasoning' => data_get($analysis, 'financial_health.reasoning'),
+            'meta' => $statusMetaMap[$status] ?? $statusMetaMap['healthy'],
+        ];
 
         return view('backoffice.financial-insight', [
+            'analysisStatus' => $analysisStatus,
+            'analysis' => $analysis,
             'summary' => $summary,
             'prevSummary' => $prevSummary,
             'labels' => $timeSeriesData['labels'],
@@ -73,10 +104,107 @@ class FinancialInsightController extends Controller
             'topCategories' => $topCategories,
             'budgets' => $budgets,
             'healthBreakdown' => $healthBreakdown,
-            'transactions' => $transactions
+            'transactions' => $transactions->take(10),
         ]);
     }
 
+    public function downloadPdf(Request $request)
+    {
+        $user = auth()->user();
+        $user = Auth::user();
+        $now = now();
+
+        // Ambil dari request atau default bulan ini
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : $now->copy()->startOfMonth();
+
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : $now->copy()->endOfMonth();
+
+        $rangeDays = $startDate->diffInDays($endDate) + 1;
+
+        $startOfPrevPeriod = $startDate->copy()->subDays($rangeDays);
+        $endOfPrevPeriod = $endDate->copy()->subDays($rangeDays);
+        // 1. SUMMARY BULAN INI
+        $summary = $this->getMonthlySummary($user->id, $startDate, $endDate);
+
+        // 2. SUMMARY BULAN SEBELUMNYA
+        $prevSummary = $this->getMonthlySummary($user->id, $startOfPrevPeriod, $endOfPrevPeriod);
+
+        // 3. DATA TIME SERIES (30 hari terakhir)
+        $timeSeriesData = $this->getTimeSeriesData($user->id, $startDate, $endDate);
+
+        // 4. TOP CATEGORIES (pengeluaran bulan ini)
+        $topCategories = $this->getTopCategories($user->id, $startDate, $endDate);
+
+        // 5. BUDGETS USER
+        $budgets = $this->getUserBudgets($user->id);
+
+        // 6. HEALTH BREAKDOWN
+        $healthBreakdown = $this->calculateHealthBreakdown($summary, $budgets);
+
+        // 7. TOTAL BALANCE (dari semua transaksi)
+        $totalBalance = $this->getTotalBalance($user->id);
+        $summary['balance'] = $totalBalance;
+
+        // 8. RECENT TRANSACTIONS
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->with('transactionCategory')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($transaction) {
+                return [
+                    'date' => $transaction->transaction_date->format('Y-m-d'),
+                    'category' => $transaction->transactionCategory->name ?? 'Uncategorized',
+                    'type' => $transaction->type,
+                    'amount' => 'Rp ' . number_format($transaction->amount, 0, ',', '.'),
+                    'description' => $transaction->description
+                ];
+            });
+
+        $analysis = $this->analyzeFinancial(
+            json_encode($transactions),
+            $request->filled('start_date'),
+            $request->filled('end_date')
+        );
+
+        $status = data_get($analysis, 'financial_health.status', 'healthy');
+
+        $statusMetaMap = [
+            'healthy' => ['class' => 'success', 'icon' => '✅', 'label' => 'SEHAT'],
+            'warning' => ['class' => 'warning', 'icon' => '⚠️', 'label' => 'PERHATIAN'],
+            'deficit' => ['class' => 'danger', 'icon' => '❌', 'label' => 'DEFISIT'],
+        ];
+
+        $analysisStatus = [
+            'status' => $status,
+            'score' => data_get($analysis, 'financial_health.score'),
+            'reasoning' => data_get($analysis, 'financial_health.reasoning'),
+            'meta' => $statusMetaMap[$status] ?? $statusMetaMap['healthy'],
+        ];
+
+        // ===== Render PDF =====
+        $pdf = Pdf::loadView('pdf.financial-insight', [
+            'analysisStatus' => $analysisStatus,
+            'analysis' => $analysis,
+            'summary' => $summary,
+            'prevSummary' => $prevSummary,
+            'labels' => $timeSeriesData['labels'],
+            'spending' => $timeSeriesData['spending'],
+            'income' => $timeSeriesData['income'],
+            'topCategories' => $topCategories,
+            'budgets' => $budgets,
+            'healthBreakdown' => $healthBreakdown,
+            'transactions' => $transactions->take(10),
+        ])->setPaper('A4', 'portrait');
+
+        return $pdf->download(
+            'Insight-Keuangan-' . now()->format('Y-m-d') . '.pdf'
+        );
+    }
 
     /**
      * Get monthly financial summary - disesuaikan dengan field model Anda
@@ -521,5 +649,123 @@ class FinancialInsightController extends Controller
             default:
                 return "Analisis keuangan selesai.";
         }
+    }
+
+    public function analyzeFinancial($transactions, $startDate, $endDate)
+    {
+        $prompt = $this->buildFinancialPrompt(
+            $transactions
+        );
+        try {
+            if (empty($startDate) || empty($endDate)) {
+                throw new \InvalidArgumentException();
+            }
+            // API call remains the same
+            $apiKey = config('services.google.gemini_api_key');
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
+
+            $response = Http::post($url, [
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]]
+                ]
+            ]);
+
+            $data = $response->json();
+
+            $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            if (!$text) {
+                throw new \Exception('No response from AI');
+            }
+
+            // Clean and parse JSON
+            $clean = preg_replace('/```(json)?|```/', '', $text);
+            $clean = trim($clean);
+            $parser = json_decode($clean, true, 512, JSON_THROW_ON_ERROR);
+            return $parser;
+        } catch (\Throwable $e) {
+            // fallback aman
+            return [
+                'financial_health' => [
+                    'score' => 00,
+                    'status' => 'warning',
+                    'reasoning' => 'Silakan generate analisis terlebih dahulu'
+                ],
+                'anomalies' => [],
+                'advice' => [],
+                'message' => 'Silakan generate analisis terlebih dahulu.'
+            ];
+        }
+    }
+
+
+    private function buildFinancialPrompt($transactions)
+    {
+        return <<<EOT
+Kamu adalah asisten keuangan profesional.
+Tugasmu:
+1. Deteksi anomali pengeluaran
+2. Hitung Financial Health Score (0–100)
+3. Buat advice terpadu (insight + rekomendasi)
+
+Data User Transactions
+$transactions
+
+INSTRUKSI ANALISIS
+
+A. DETEKSI ANOMALI PENGELUARAN
+Identifikasi dan jelaskan anomali berikut:
+- Transaksi besar yang jarang terjadi.
+- Perubahan pola konsumsi yang tidak konsisten atau impulsif.
+
+B. PENILAIAN KESEHATAN KEUANGAN
+Hitung dan nilai kondisi keuangan user:
+- Bandingkan pemasukan vs pengeluaran.
+- Nilai kemampuan menabung (sisa saldo).
+- Evaluasi keseimbangan antara kebutuhan dan keinginan.
+
+Buat skor Financial Health Score (0–100) dengan interpretasi:
+- 80–100 → sehat dan stabil (healthy)
+- 50–79 → perlu perhatian (warning)
+- < 50 → berisiko / defisit (deficit)
+
+C. ADVICE TERPADU
+Gabungkan semua temuan menjadi satu kumpulan advice utama, yang mencakup:
+- Ringkasan kondisi keuangan user saat ini.
+- Dampak dari anomali yang ditemukan.
+- Insight penting tentang kebiasaan finansial user.
+- Rekomendasi tindakan yang konkret dan realistis:
+  - kebiasaan yang perlu dikurangi,
+  - langkah kecil untuk perbaikan,
+  - peluang hemat tanpa mengorbankan kebutuhan utama.
+- Jika ada defisit, berikan peringatan yang lembut, empatik, dan solutif.
+
+GAYA BAHASA
+- Gunakan Bahasa Indonesia yang ramah, natural, dan suportif.
+- Jangan menghakimi user.
+- Sertakan angka (Rp xxx.xxx) atau persentase jika relevan.
+- Fokus pada solusi dan perbaikan bertahap.
+
+FORMAT OUTPUT JSON TANPA TEKS:
+{
+  "financial_health": {
+    "score": 0,
+    "status": "healthy|warning|deficit",
+    "reasoning": ""
+  },
+  "anomalies": [
+    {
+      "title": "",
+      "description": ""
+    }],
+  "advice": [
+    {
+        "icon": "Gunakan emoticon yang relevan",
+        "title": "",
+        "description": ""
+    }],
+  "message": ""
+}
+
+EOT;
     }
 }

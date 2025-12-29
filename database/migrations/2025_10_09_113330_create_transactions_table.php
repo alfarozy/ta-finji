@@ -18,7 +18,9 @@ return new class extends Migration
             $table->integer('amount');
             $table->string('description')->nullable();
             $table->enum('type', ['income', 'expense']);
+            $table->enum('source', ['manual', 'whatsapp', 'mutation'])->default('manual');
             $table->date('transaction_date');
+            $table->string('external_id')->nullable();
             $table->timestamps();
         });
     }

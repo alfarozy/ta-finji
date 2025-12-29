@@ -15,7 +15,10 @@
             <div class="card p-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="card-header mb-0">Transaksi</h5>
-                    <div class="d-flex">
+                    <div class="">
+                        <a href="{{ route('transactions.sync') }}" class="btn btn-outline-info btn-sm mr-2">
+                            <i class="bx bx-sync me-1"></i> Singkronkan mutasi bank
+                        </a>
                         <a href="{{ route('transactions.create') }}" class="btn btn-outline-primary btn-sm">
                             <i class="bx bx-plus me-1"></i> Transaksi baru
                         </a>
@@ -122,6 +125,13 @@
                                 <tr>
                                     <td>
                                         <span class="d-block">{{ $transaction->description ?? '—' }}</span>
+                                        @if ($transaction->source === \App\Models\Transaction::SOURCE_MUTATION)
+                                            <small class="mt-1 text-info">Mutasi Bank</small>
+                                        @elseif ($transaction->source === \App\Models\Transaction::SOURCE_WHATSAPP)
+                                            <small class="mt-1 text-success">Whatsapp</small>
+                                        @else
+                                            <small class="mt-1 text-secondary">Input manual</small>
+                                        @endif
                                     </td>
                                     <td>
                                         @php
@@ -137,6 +147,8 @@
                                         @else
                                             <small class="badge bg-secondary">Kategori hilang</small>
                                         @endif
+
+
                                     </td>
                                     <td>
                                         @if ($transaction->transaction_date)
@@ -144,6 +156,7 @@
                                         @else
                                             -
                                         @endif
+
                                     </td>
                                     <td class="text-end">
                                         <span
