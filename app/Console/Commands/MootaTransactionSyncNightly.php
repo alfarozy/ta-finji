@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Console\Commands;
+
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use App\Models\BankAccount;
@@ -24,7 +26,7 @@ class MootaTransactionSyncNightly extends Command
 
     protected function syncBankAccount(BankAccount $bankAccount)
     {
-        $startDate = optional($bankAccount->last_synced_at)
+        $startDate = $bankAccount->last_synced_at
             ? Carbon::parse($bankAccount->last_synced_at)->subDay()->toDateString()
             : now()->subDays(1)->toDateString();
 
@@ -47,11 +49,8 @@ class MootaTransactionSyncNightly extends Command
             return;
         }
 
-        $mutations = $response->json('data') ?? [];
+        foreach ($response->json('data', []) as $m) {
 
-        foreach ($mutations as $m) {
-
-            // DEDUP
             if (Transaction::where('external_id', $m['mutation_id'])->exists()) {
                 continue;
             }
@@ -79,9 +78,6 @@ class MootaTransactionSyncNightly extends Command
         ]);
     }
 
-    /**
-     * RULE BASED (BISA DIGANTI AI)
-     */
     protected function autoCategory(string $description, string $type): ?int
     {
         $desc = strtolower($description);
@@ -97,6 +93,6 @@ class MootaTransactionSyncNightly extends Command
             if (str_contains($desc, 'grab') || str_contains($desc, 'gojek')) return 5;
         }
 
-        return null; // Lainnya
+        return null;
     }
 }

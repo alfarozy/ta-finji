@@ -143,6 +143,7 @@ class BankAccountController extends Controller
         if (!$bankAccount) {
             return redirect()->route('bank-account.index')->with('error', 'Silahkan tambahkan bank terlebih dahulu');
         }
+
         $bankId = $bankAccount->moota_bank_id;
 
         // Request DELETE ke MOOTA

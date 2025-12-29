@@ -217,11 +217,11 @@ class TransactionController extends Controller
             ->where('user_id', $userId)
             ->firstOrFail();
 
-        // if ($transaction->source === Transaction::SOURCE_MUTATION) {
-        //     return redirect()
-        //         ->route('transactions.index')
-        //         ->with('error', 'Transaksi ini tidak dapat diubah karena merupakan transaksi mutasi');
-        // }
+        if ($transaction->source === Transaction::SOURCE_MUTATION) {
+            return redirect()
+                ->route('transactions.index')
+                ->with('error', 'Transaksi ini tidak dapat diubah karena merupakan transaksi mutasi');
+        }
 
         DB::transaction(function () use ($transaction, $userId) {
 

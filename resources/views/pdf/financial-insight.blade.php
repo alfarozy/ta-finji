@@ -78,7 +78,7 @@
         }
 
         .card-header {
-            background: linear-gradient(135deg, #7367f0 0%, #5e50ee 100%);
+            background: #7367f0;
             color: white;
             padding: 12px 15px;
             font-weight: 600;
@@ -526,8 +526,7 @@
 
     <!-- Breakdown Kategori Pengeluaran -->
     <div class="card">
-        <div class="card-header"
-            style="background: linear-gradient(135deg, #7367f0 0%, #5e50ee 100%); color: white; padding: 12px 15px; font-weight: 600;">
+        <div style="background: #7367f0; color: white; padding: 12px 15px; font-weight: 600;">
 
             Rincian Kategori Pengeluaran
         </div>
@@ -574,10 +573,35 @@
         </div>
     </div>
 
+    <!-- Anomali -->
+    <div class="card">
+        <div style="background: #7367f0; color: white; padding: 12px 15px; font-weight: 600;">
+            Deteksi Anomali & Peringatan
+        </div>
+        <div class="card-body">
+            @if (!empty($analysis['anomalies']) && count($analysis['anomalies']) > 0)
+                <div class="row">
+                    @foreach ($analysis['anomalies'] as $rec)
+                        <div class="col-6 mb-2">
+                            <div class="anomaly-card">
+                                <div class="fw-bold text-success mb-1">{{ $rec['title'] }}</div>
+                                <div class="text-muted" style="font-size: 11px;">
+                                    {{ $rec['description'] }}
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-center text-muted">
+                    Tidak ada Anomali saat ini
+                </div>
+            @endif
+        </div>
+    </div>
     <!-- Rekomendasi Tindakan -->
     <div class="card">
-        <div class="card-header"
-            style="background: linear-gradient(135deg, #7367f0 0%, #5e50ee 100%); color: white; padding: 12px 15px; font-weight: 600;">
+        <div style="background: #7367f0; color: white; padding: 12px 15px; font-weight: 600;">
 
             Rekomendasi Tindakan
         </div>
@@ -587,7 +611,8 @@
                     @foreach ($analysis['advice'] as $rec)
                         <div class="col-6 mb-2">
                             <div class="recommendation-card">
-                                <div class="fw-bold text-success mb-1">{{ $rec['title'] }}</div>
+                                <div class="fw-bold text-success mb-1">
+                                    {{ $rec['title'] }}</div>
                                 <div class="text-muted" style="font-size: 11px;">
                                     {{ $rec['description'] }}
                                 </div>
@@ -606,8 +631,7 @@
     <!-- Budget Overview -->
     @if (!empty($budgets) && count($budgets) > 0)
         <div class="card">
-            <div class="card-header"
-                style="background: linear-gradient(135deg, #7367f0 0%, #5e50ee 100%); color: white; padding: 12px 15px; font-weight: 600;">
+            <div style="background: #7367f0; color: white; padding: 12px 15px; font-weight: 600;">
 
                 Ikhtisar Budget
             </div>
@@ -688,8 +712,7 @@
 
     <!-- Transaksi Terbaru -->
     <div class="card">
-        <div class="card-header"
-            style="background: linear-gradient(135deg, #7367f0 0%, #5e50ee 100%); color: white; padding: 12px 15px; font-weight: 600;">
+        <div style="background: #7367f0; color: white; padding: 12px 15px; font-weight: 600;">
 
             Transaksi Terbaru
         </div>
