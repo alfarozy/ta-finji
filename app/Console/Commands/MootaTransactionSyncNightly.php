@@ -6,7 +6,7 @@ use App\Models\BankAccount;
 use App\Models\Transaction;
 use Carbon\Carbon;
 
-class MootaSyncNightly extends Command
+class MootaTransactionSyncNightly extends Command
 {
     protected $signature = 'moota:sync-nightly';
     protected $description = 'Sync mutasi bank dari Moota (scheduled nightly)';
@@ -37,7 +37,6 @@ class MootaSyncNightly extends Command
             config('services.moota.base_url') . '/api/v2/mutation',
             [
                 'bank'       => $bankAccount->moota_bank_id,
-                'type'       => 'CR|DB',
                 'start_date' => $startDate,
                 'end_date'   => $endDate,
                 'per_page'   => 100,

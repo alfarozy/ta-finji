@@ -64,8 +64,7 @@ RUN printf "post_max_size = 120M\nupload_max_filesize = 512M\nmemory_limit = 512
 COPY . /var/www
 
 # Install dependency full setelah source code masuk
-RUN composer install --no-dev --optimize-autoloader \
-    && composer dump-autoload --optimize
+RUN composer install
 
 # Konfigurasi CRON JOB
 RUN echo "* * * * * php /var/www/artisan schedule:run >> /var/log/cron.log 2>&1" | crontab - \

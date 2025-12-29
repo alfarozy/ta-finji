@@ -144,30 +144,6 @@
         </div>
     </div>
 
-    <!-- Modal Konfirmasi Hapus -->
-    <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title text-danger">Konfirmasi Hapus</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center">
-                        <i class="bx bx-trash text-danger fs-1 mb-3"></i>
-                        <h6>Hapus Akun Bank?</h6>
-                        <p class="text-muted">Apakah Anda yakin ingin menghapus akun bank ini? Tindakan ini tidak dapat
-                            dibatalkan.</p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-danger" onclick="deleteBankAccount()">Hapus Akun</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- / Konten -->
 
     <!-- Footer -->
@@ -192,35 +168,3 @@
     <div class="content-backdrop fade"></div>
     </div>
 @endsection
-
-@push('scripts')
-    <script>
-        function confirmDelete() {
-            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
-            deleteModal.show();
-        }
-
-        function deleteBankAccount() {
-            // Simulasi pemanggilan API (pakai ID akun dummy)
-            simulateAPICall('DELETE', '/api/bank-accounts/1')
-                .then(response => {
-                    // Tutup semua modal
-                    const updateModal = bootstrap.Modal.getInstance(document.getElementById('updateBankAccountModal'));
-                    const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmationModal'));
-                    updateModal.hide();
-                    deleteModal.hide();
-
-                    // Tampilkan pesan sukses
-                    showNotification('success', 'Akun bank berhasil dihapus!');
-
-                    // Di aplikasi nyata, Anda bisa refresh halaman atau update UI
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                })
-                .catch(error => {
-                    showNotification('error', 'Gagal menghapus akun bank. Silakan coba lagi.');
-                });
-        }
-    </script>
-@endpush

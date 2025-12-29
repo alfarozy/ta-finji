@@ -54,7 +54,7 @@ class BankAccountController extends Controller
         );
 
         if (! $response->successful()) {
-            return redirect()->rotue('bank-account.index')->with('error', 'Gagal membuat akun bank');
+            return redirect()->route('bank-account.index')->with('error', 'Gagal membuat akun bank');
         }
 
         $data = $response->json();
@@ -71,13 +71,15 @@ class BankAccountController extends Controller
             'account_name'   => $bank['atas_nama'],
         ]);
 
-        return redirect()->rotue('bank-account.index')->with('success', 'Mutasi bank berhasil disambungkan');
+        return redirect()->route('bank-account.index')->with('success', 'Mutasi bank berhasil disambungkan');
     }
 
     public function edit($id)
     {
         $bankAccount = BankAccount::where(['user_id' => auth()->id()])->first();
-
+        if (!$bankAccount) {
+            return redirect()->route('bank-account.index')->with('error', 'Silahkan tambahkan bank terlebih dahulu');
+        }
         return view('backoffice.bank.edit', compact('bankAccount'));
     }
 
@@ -137,10 +139,10 @@ class BankAccountController extends Controller
     public function destroy($id)
     {
         // Ambil akun bank milik user
-        $bankAccount = BankAccount::where('id', $id)
-            ->where('user_id', auth()->id())
-            ->firstOrFail();
-
+        $bankAccount = BankAccount::where(['user_id' => auth()->id()])->first();
+        if (!$bankAccount) {
+            return redirect()->route('bank-account.index')->with('error', 'Silahkan tambahkan bank terlebih dahulu');
+        }
         $bankId = $bankAccount->moota_bank_id;
 
         // Request DELETE ke MOOTA

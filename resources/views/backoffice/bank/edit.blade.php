@@ -40,15 +40,15 @@
                                         required>
                                         <option value="">-- Pilih Bank --</option>
                                         <option value="bca"
-                                            {{ old('bank_name', $bankAccount->bank_name) === 'bca' ? 'selected' : '' }}>
+                                            {{ old('bank_name', $bankAccount->bank_name) === 'BCA' ? 'selected' : '' }}>
                                             Bank Central Asia (BCA)
                                         </option>
                                         <option value="bni"
-                                            {{ old('bank_name', $bankAccount->bank_name) === 'bni' ? 'selected' : '' }}>
+                                            {{ old('bank_name', $bankAccount->bank_name) === 'BNI' ? 'selected' : '' }}>
                                             Bank Negara Indonesia (BNI)
                                         </option>
                                         <option value="bri"
-                                            {{ old('bank_name', $bankAccount->bank_name) === 'bri' ? 'selected' : '' }}>
+                                            {{ old('bank_name', $bankAccount->bank_name) === 'BRI' ? 'selected' : '' }}>
                                             Bank Rakyat Indonesia (BRI)
                                         </option>
                                     </select>
@@ -112,10 +112,9 @@
 
                             {{-- Action --}}
                             <div class="d-flex justify-content-between">
-                                <a href="{{ route('bank-account.index') }}" class="btn btn-outline-secondary">
-                                    Batal
-                                </a>
-
+                                <button type="button" class="btn btn-outline-danger" onclick="confirmDelete('ok')">
+                                    <i class="bx bx-trash me-1"></i> Hapus Akun Bank
+                                </button>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bx bx-save me-1"></i> Simpan Perubahan
                                 </button>
@@ -129,4 +128,43 @@
 
         </div>
     </div>
+
+
+    <!-- Modal Konfirmasi Hapus -->
+    <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Konfirmasi Hapus</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <i class="bx bx-trash text-danger fs-1 mb-3"></i>
+                        <h6>Hapus Akun Bank?</h6>
+                        <p class="text-muted">Apakah Anda yakin ingin menghapus akun bank ini? Tindakan ini tidak dapat
+                            dibatalkan.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <form action="{{ route('bank-account.destroy', 'ok') }}" method="post">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">Hapus Akun</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
+
+@push('scripts')
+    <script>
+        function confirmDelete() {
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
+            deleteModal.show();
+        }
+    </script>
+@endpush
