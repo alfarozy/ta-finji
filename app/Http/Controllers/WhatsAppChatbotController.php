@@ -135,6 +135,8 @@ Kalau belum pernah daftar, silakan daftar di sini ya:
         $currentDate        = Carbon::now()->format('Y-m-d');
         $yesterday          = Carbon::now()->subDay()->format('Y-m-d');
         $tomorrow           = Carbon::now()->addDay()->format('Y-m-d');
+        $categoryName = TransactionCategory::pluck('name')->toArray();
+        $categoryList = implode(', ', $categoryName);
 
         $promptTemplate = <<<EOT
 You are Finji, an intelligent personal finance assistant for finji.app. Your PRIMARY function is to record financial transactions. If the user's message is NOT a financial transaction, guide them on how to record one.
@@ -204,7 +206,7 @@ AMOUNT:
 - If no amount: null AND action = "not_transaction"
 
 CATEGORY:
-- Use Bahasa Indonesia: makan, transportasi, belanja, gaji, tagihan, hiburan, etc.
+- Use Bahasa Indonesia: [$categoryList].
 - Extract from context: "beli nasi" → "makan"
 - Default: "lainnya"
 
