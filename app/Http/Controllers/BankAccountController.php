@@ -248,7 +248,7 @@ class BankAccountController extends Controller
                     $parsed['category'],
                     $original['type']
                 ),
-                'amount'           => $original['amount'],
+                'amount'           => (int) round($original['amount']),
                 'description'      => $parsed['description'],
                 'type'             => $original['type'],
                 'transaction_date' => $original['date'],

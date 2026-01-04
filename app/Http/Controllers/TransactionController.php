@@ -51,7 +51,8 @@ class TransactionController extends Controller
 
         // Ordering + paginate, sertakan query string saat pindah halaman
         $transactions = $query
-            ->latest('created_at')
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('created_at', 'desc')
             ->paginate($perPage)
             ->appends($request->except('page'));
 
