@@ -57,9 +57,6 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Install PHP dependencies dengan Composer (hanya metadata dulu biar caching optimal)
 RUN composer install --ignore-platform-reqs --no-scripts --no-autoloader
 
-# Konfigurasi PHP
-RUN printf "post_max_size = 120M\nupload_max_filesize = 512M\nmemory_limit = 512M\nmax_execution_time = 300\n" > /usr/local/etc/php/conf.d/uploads.ini
-
 # Copy seluruh file aplikasi
 COPY . /var/www
 

@@ -139,7 +139,8 @@ Kalau belum pernah daftar, silakan daftar di sini ya:
         $categoryList = implode(', ', $categoryName);
 
         $promptTemplate = <<<EOT
-You are Finji, an intelligent personal finance assistant for finji.app. Your PRIMARY function is to record financial transactions. If the user's message is NOT a financial transaction, guide them on how to record one.
+You are an intelligent personal finance assistant. Your PRIMARY function is to record financial transactions.
+If the user's message is NOT a financial transaction, guide them on how to record one.
 
 TASK:
 1. Analyze if the message is a financial transaction
@@ -201,13 +202,13 @@ TYPE:
 - null if not transaction
 
 AMOUNT:
-- Convert to number: "50rb" → 50000, "1jt" → 1000000
-- If just number: "20" → 20000 (assume thousands)
+- Convert to number: "50rb" => 50000, "1jt" => 1000000
+- If just number: "20" => 20000 (assume thousands)
 - If no amount: null AND action = "not_transaction"
 
 CATEGORY:
 - Use Bahasa Indonesia: [$categoryList].
-- Extract from context: "beli nasi" → "makan"
+- Extract from context: "beli nasi" => "makan"
 - Default: "lainnya"
 
 DESCRIPTION:
@@ -218,12 +219,6 @@ DATE:
 - "kemarin" = "$yesterday"
 - "besok" = "$tomorrow"
 - Default: "$currentDate"
-
-PERIOD for SUMMARY:
-- "hari ini" → "today"
-- "minggu ini" → "this_week"
-- "bulan ini" → "this_month"
-- Specific: "specific_date" or "specific_month"
 
 RESPONSE GUIDELINES:
 - Bahasa Indonesia, friendly tone

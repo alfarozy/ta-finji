@@ -288,7 +288,6 @@ ATURAN WAJIB:
 PANDUAN DESKRIPSI:
 - Gunakan format netral, contoh:
   - "Transfer E-Banking ke [Nama]"
-  - "Tarik tunai melalui ATM"
   - "Mutasi bank masuk"
 - Jangan gunakan kata yang bersifat asumtif seperti "makan", "belanja", "hiburan" kecuali eksplisit di teks.
 

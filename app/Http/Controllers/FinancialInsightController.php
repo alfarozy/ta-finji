@@ -683,7 +683,7 @@ class FinancialInsightController extends Controller
             $parser = json_decode($clean, true, 512, JSON_THROW_ON_ERROR);
             return $parser;
         } catch (\Throwable $e) {
-            // fallback aman
+            // fallback jika API call gagal
             return [
                 'financial_health' => [
                     'score' => 00,
@@ -710,8 +710,6 @@ Tugasmu:
 Data User Transactions
 $transactions
 
-INSTRUKSI ANALISIS
-
 A. DETEKSI ANOMALI PENGELUARAN
 Identifikasi dan jelaskan anomali berikut:
 - Transaksi besar yang jarang terjadi.
@@ -722,7 +720,6 @@ Hitung dan nilai kondisi keuangan user:
 - Bandingkan pemasukan vs pengeluaran.
 - Nilai kemampuan menabung (sisa saldo).
 - Evaluasi keseimbangan antara kebutuhan dan keinginan.
-
 Buat skor Financial Health Score (0–100) dengan interpretasi:
 - 80–100 → sehat dan stabil (healthy)
 - 50–79 → perlu perhatian (warning)
